@@ -409,6 +409,7 @@ dialog::backdrop{background:rgba(10,10,14,.5)}
     </form>
     <button type="button" id="forgotPasswordBtn" class="login-forgot">Esqueci minha senha</button>
     <p id="loginLoading" class="login-loading" hidden>Carregando dados…</p>
+    <p id="noAccessBox" class="login-loading" hidden>Sua conta entrou, mas ainda não tem acesso liberado neste painel. Peça para quem administra o painel liberar seu acesso, ou use "Sair" no canto superior para trocar de conta.</p>
   </div>
 </div>
 <div id="logoutBar" hidden><button type="button" id="logoutBtn" class="logout-btn">Sair</button></div>
@@ -453,6 +454,11 @@ function App(){
   var readOnly=false;
   var toastTimer=null;
   var pendingRemoteState=null;
+
+  if(window.__fugaRole==="partner"&&window.__fugaProfile&&window.__fugaProfile.eventId){
+    ui.view="detail";
+    ui.selectedEventId=window.__fugaProfile.eventId;
+  }
 
   function loadState(){
     try{
@@ -507,6 +513,7 @@ function App(){
   }
 
   function persist(newState,opts){
+    var oldState=state;
     state=newState;
     render();
     saveUi();
@@ -515,7 +522,7 @@ function App(){
       toast("Não salvo — sem conexão com o banco de dados. Recarregue a página.");
       return;
     }
-    window.__fugaSave(newState).catch(function(err){
+    window.__fugaSave(newState,oldState).catch(function(err){
       var code=err&&err.code?err.code:"";
       if(code==="permission-denied"){
         readOnly=true;
@@ -687,7 +694,7 @@ function App(){
 
     var tableOrEmpty=events.length===0
       ? '<div class="empty"><h3>Nenhum evento cadastrado</h3><p>Cadastre o primeiro evento para começar a acompanhar passagens, hotel, som, riders, transfers e ingressos em um só lugar.</p>'
-        +(readOnly?"":'<button class="btn btn-primary" data-action="new-event">'+ICONS.plus+"Novo evento</button>")
+        +(readOnly||window.__fugaRole!=="admin"?"":'<button class="btn btn-primary" data-action="new-event">'+ICONS.plus+"Novo evento</button>")
         +'</div>'
       : (filtered.length===0
         ? '<div class="empty"><h3>Nada encontrado</h3><p>Ajuste a busca ou os filtros para ver outros eventos.</p></div>'
@@ -698,7 +705,7 @@ function App(){
     return ""
       +(readOnly?'<div class="banner">'+ICONS.alert+"Suas alterações NÃO estão sendo salvas nesta janela — peça a quem compartilhou o link para conferir sua permissão de edição.</div>":"")
       +'<div class="topbar"><div class="brand"><img class="brand-logo" src="'+LOGO_SRC+'" alt="Fuga"><div><h1>Painel de Eventos</h1><p>Passagens, hotel, som, riders, transfers e ingressos — todos os eventos, um só lugar.</p></div></div>'
-      +'<div class="topbar-actions">'+refreshBarHtml()+(readOnly?"":'<button class="btn btn-primary" data-action="new-event">'+ICONS.plus+"Novo evento</button>")+"</div>"
+      +'<div class="topbar-actions">'+refreshBarHtml()+(window.__fugaRole==="admin"?'<button class="btn btn-ghost" data-action="open-access-modal">Acessos de parceiros</button>':"")+(readOnly||window.__fugaRole!=="admin"?"":'<button class="btn btn-primary" data-action="new-event">'+ICONS.plus+"Novo evento</button>")+"</div>"
       +"</div>"
       +renderAlerts()
       +'<div class="stats">'
@@ -833,13 +840,13 @@ function App(){
 
     return ""
       +(readOnly?'<div class="banner">'+ICONS.alert+"Suas alterações NÃO estão sendo salvas nesta janela — peça a quem compartilhou o link para conferir sua permissão de edição.</div>":"")
-      +'<div class="detail-topbar"><button class="back-link" data-action="back">'+iconLeft()+"Todos os eventos</button>"+refreshBarHtml()+"</div>"
+      +'<div class="detail-topbar">'+(window.__fugaRole==="partner"?'<span class="back-link" style="cursor:default;text-decoration:none">'+esc(ev.nome||"Evento")+'</span>':'<button class="back-link" data-action="back">'+iconLeft()+"Todos os eventos</button>")+refreshBarHtml()+"</div>"
       +'<div class="detail-head"><div class="detail-title-row">'
       +'<input class="title-input" value="'+esc(ev.nome||"")+'" placeholder="Nome do evento" data-entity="event" data-id="'+ev.id+'" data-field="nome"'+dis+'>'
       +'<span class="pill pill-'+ev.status+'">'+statusLabel(STATUS_EVENTO,ev.status)+'</span>'
       +(ev.tipo==="collab"?'<span class="pill pill-collab">Collab'+(ev.parceiro?" · "+esc(ev.parceiro):"")+'</span>':'<span class="pill pill-proprio">Próprio</span>')
       +"</div>"
-      +(readOnly?"":'<button class="btn btn-danger" data-action="delete-event" data-id="'+ev.id+'">'+ICONS.trash+"Excluir evento</button>")
+      +(readOnly||window.__fugaRole==="partner"?"":'<button class="btn btn-danger" data-action="delete-event" data-id="'+ev.id+'">'+ICONS.trash+"Excluir evento</button>")
       +"</div>"
       +'<nav class="quicknav"><a href="#sec-geral">Visão geral</a><a href="#sec-checklist">Checklist</a><a href="#sec-ingressos">Ingressos</a><a href="#sec-custos">Custos</a><a href="#sec-financeiro">Financeiro</a></nav>'
       +'<div id="sec-geral">'+fieldGrid+"</div>"
@@ -972,11 +979,59 @@ function App(){
     if(dlg&&dlg.open)dlg.close();
   }
 
+  /* ---------- acessos de parceiros (admin) ---------- */
+  function accessModalHtml(){
+    var eventOptions=(state.events||[]).map(function(e){return '<option value="'+e.id+'">'+esc(e.nome||"Sem nome")+'</option>';}).join("");
+    return '<div class="modal-body"><h2>Acessos de parceiros</h2>'
+      +'<p class="hint">Cada parceiro só enxerga e edita o evento vinculado a ele — nada dos outros eventos.</p>'
+      +'<div id="accessListBox" class="hint">Carregando…</div>'
+      +'<hr style="border:none;border-top:1px solid var(--border);margin:16px 0">'
+      +'<h3 style="font-size:14px;margin:0 0 10px">Adicionar acesso</h3>'
+      +'<div class="modal-grid">'
+      +'<div class="field span2"><label>Evento</label><select id="accessEvento">'+(eventOptions||'<option value="">Cadastre um evento primeiro</option>')+'</select></div>'
+      +'<div class="field span2"><label>E-mail do parceiro</label><input type="email" id="accessEmail" placeholder="parceiro@exemplo.com"></div>'
+      +'<div class="field span2"><label>Senha provisória</label><input type="text" id="accessSenha" placeholder="mínimo 6 caracteres"></div>'
+      +"</div>"
+      +'<div class="modal-actions"><button class="btn btn-ghost" data-action="close-access-modal">Fechar</button><button class="btn btn-primary" data-action="create-partner-access">'+ICONS.plus+"Criar acesso</button></div>"
+      +"</div>";
+  }
+  function openAccessModal(){
+    var dlg=document.getElementById("accessDialog");
+    dlg.innerHTML=accessModalHtml();
+    dlg.showModal();
+    refreshAccessList();
+  }
+  function closeAccessModal(){
+    var dlg=document.getElementById("accessDialog");
+    if(dlg&&dlg.open)dlg.close();
+  }
+  function refreshAccessList(){
+    var box=document.getElementById("accessListBox");
+    if(!box||!window.__fugaListPartners)return;
+    window.__fugaListPartners().then(function(list){
+      var box2=document.getElementById("accessListBox");
+      if(!box2)return;
+      if(!list.length){box2.className="hint";box2.textContent="Nenhum parceiro com acesso ainda.";return;}
+      box2.className="";
+      box2.innerHTML='<div class="table-wrap"><table><thead><tr><th>E-mail</th><th>Evento</th><th></th></tr></thead><tbody>'
+        +list.map(function(p){
+          var pev=findEvent(state,p.eventId);
+          return '<tr><td>'+esc(p.email||"")+'</td><td>'+esc(pev?pev.nome:"(evento não encontrado)")+'</td>'
+            +'<td><button type="button" class="btn btn-danger btn-sm" data-action="revoke-partner-access" data-uid="'+esc(p.uid)+'">'+ICONS.trash+"Revogar</button></td></tr>";
+        }).join("")
+        +"</tbody></table></div>";
+    }).catch(function(err){
+      var box3=document.getElementById("accessListBox");
+      if(box3){box3.className="hint";box3.style.color="var(--bad)";box3.textContent="Não foi possível carregar ("+(err&&err.code||"erro")+").";}
+    });
+  }
+
   /* ---------- render root ---------- */
   function render(){
     var root=document.getElementById("app");
     root.innerHTML=(ui.view==="detail"?renderDetail():renderDashboard())
       +'<dialog id="newEventDialog"></dialog>'
+      +'<dialog id="accessDialog"></dialog>'
       +'<div class="toast" id="toast"></div>';
   }
 
@@ -985,6 +1040,8 @@ function App(){
     var el=e.target.closest("[data-action]");
     if(!el)return;
     var action=el.dataset.action;
+    var PARTNER_BLOCKED={"new-event":1,"create-event":1,"delete-event":1,"back":1,"open-access-modal":1,"create-partner-access":1,"revoke-partner-access":1};
+    if(window.__fugaRole==="partner"&&PARTNER_BLOCKED[action])return;
     if(action==="refresh-now"){
       saveUi();location.reload();
     }else if(action==="toggle-avisos-group"){
@@ -1037,6 +1094,45 @@ function App(){
         ui.view="dashboard";ui.selectedEventId=null;
         persist(ns2);
       }
+    }else if(action==="open-access-modal"){
+      openAccessModal();
+    }else if(action==="close-access-modal"){
+      closeAccessModal();
+    }else if(action==="create-partner-access"){
+      if(!window.__fugaCreatePartner){toast("Função indisponível nesta janela.");return;}
+      var accEmail=(document.getElementById("accessEmail").value||"").trim();
+      var accSenha=document.getElementById("accessSenha").value||"";
+      var accEventId=document.getElementById("accessEvento").value;
+      if(!accEventId){toast("Cadastre um evento antes de liberar um acesso.");return;}
+      if(!accEmail){toast("Digite o e-mail do parceiro.");return;}
+      if(accSenha.length<6){toast("A senha provisória precisa ter pelo menos 6 caracteres.");return;}
+      el.disabled=true;el.textContent="Criando…";
+      window.__fugaCreatePartner(accEmail,accSenha,accEventId).then(function(){
+        toast("Acesso criado para "+accEmail+".");
+        var emailEl=document.getElementById("accessEmail"),senhaEl=document.getElementById("accessSenha");
+        if(emailEl)emailEl.value="";
+        if(senhaEl)senhaEl.value="";
+        refreshAccessList();
+      }).catch(function(err){
+        var code=err&&err.code?err.code:"";
+        var msg=code==="auth/email-already-in-use"?"Já existe uma conta com esse e-mail.":
+          code==="auth/weak-password"?"A senha precisa ter pelo menos 6 caracteres.":
+          code==="auth/invalid-email"?"Digite um e-mail válido.":
+          "Não foi possível criar o acesso"+(code?" ("+code+")":"")+".";
+        toast(msg);
+      }).finally(function(){
+        var btn=document.querySelector('[data-action="create-partner-access"]');
+        if(btn){btn.disabled=false;btn.innerHTML=ICONS.plus+"Criar acesso";}
+      });
+    }else if(action==="revoke-partner-access"){
+      if(!window.__fugaRevokePartner)return;
+      if(!confirm("Revogar o acesso desse parceiro? Ele não vai mais conseguir entrar no evento."))return;
+      window.__fugaRevokePartner(el.dataset.uid).then(function(){
+        toast("Acesso revogado.");
+        refreshAccessList();
+      }).catch(function(err){
+        toast("Não foi possível revogar ("+(err&&err.code||"erro")+").");
+      });
     }else if(action==="remove-task"){
       var ns3=deepClone(state),ev3=findEvent(ns3,ui.selectedEventId);
       ev3.tasks=ev3.tasks.filter(function(t){return t.id!==el.dataset.id;});
@@ -1198,19 +1294,22 @@ const firebaseConfig = {
 };
 /* ===================================================================== */
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
 import {
   getAuth, setPersistence, browserLocalPersistence,
-  onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail
+  onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail,
+  createUserWithEmailAndPassword
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, onSnapshot
+  getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot,
+  query, where, writeBatch
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
 
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
 const db = getFirestore(fbApp);
-const stateDocRef = doc(db, "fuga", "dashboard");
+const eventsCol = collection(db, "events");
+const usersCol = collection(db, "users");
 
 const loginGate = document.getElementById("loginGate");
 const loginForm = document.getElementById("loginForm");
@@ -1222,6 +1321,7 @@ const loginLoading = document.getElementById("loginLoading");
 const forgotBtn = document.getElementById("forgotPasswordBtn");
 const logoutBar = document.getElementById("logoutBar");
 const logoutBtn = document.getElementById("logoutBtn");
+const noAccessBox = document.getElementById("noAccessBox");
 
 function showLoginError(msg){
   loginError.textContent = msg;
@@ -1286,54 +1386,157 @@ setPersistence(auth, browserLocalPersistence).catch(function(){});
 var appStarted = false;
 var unsubscribeSnapshot = null;
 
+function eventDocData(d){
+  var data = d.data();
+  if(!data.id) data.id = d.id;
+  return data;
+}
+
+function seedIfEmpty(){
+  return getDocs(eventsCol).then(function(snap){
+    if(!snap.empty) return;
+    var seedEl = document.getElementById("seed-data");
+    var initial;
+    try{ initial = JSON.parse((seedEl && seedEl.textContent) || "{}"); }catch(e){ initial = {}; }
+    var events = (initial && Array.isArray(initial.events)) ? initial.events : [];
+    if(!events.length) return;
+    var batch = writeBatch(db);
+    events.forEach(function(ev){ batch.set(doc(db,"events",ev.id), ev); });
+    return batch.commit();
+  });
+}
+
+function handleSnapshotError(err){
+  if(loginGate.hidden === false){
+    showLoginError("Não foi possível carregar os dados (" + (err && err.code || "erro") + ").");
+    loginLoading.hidden = true;
+  }
+}
+
+function startAsAdmin(){
+  window.__fugaRole = "admin";
+  window.__fugaProfile = null;
+  seedIfEmpty().catch(function(){}).then(function(){
+    unsubscribeSnapshot = onSnapshot(eventsCol, function(snap){
+      var events = snap.docs.map(eventDocData);
+      if(!appStarted){
+        window.__initialFugaState = { events: events };
+        appStarted = true;
+        loginGate.hidden = true;
+        window.__startFugaApp();
+      }else if(window.__fugaApplyRemote){
+        window.__fugaApplyRemote({ events: events });
+      }
+    }, handleSnapshotError);
+  });
+}
+
+function startAsPartner(profile){
+  window.__fugaRole = "partner";
+  window.__fugaProfile = profile;
+  var evRef = doc(db, "events", profile.eventId);
+  unsubscribeSnapshot = onSnapshot(evRef, function(snap){
+    var events = snap.exists() ? [eventDocData(snap)] : [];
+    if(!appStarted){
+      window.__initialFugaState = { events: events };
+      appStarted = true;
+      loginGate.hidden = true;
+      window.__startFugaApp();
+    }else if(window.__fugaApplyRemote){
+      window.__fugaApplyRemote({ events: events });
+    }
+  }, handleSnapshotError);
+}
+
+function showNoAccess(){
+  loginForm.hidden = true;
+  forgotBtn.hidden = true;
+  loginLoading.hidden = true;
+  noAccessBox.hidden = false;
+}
+
 onAuthStateChanged(auth, function(user){
   if(unsubscribeSnapshot){ unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+  appStarted = false;
   if(!user){
-    appStarted = false;
     logoutBar.hidden = true;
     loginGate.hidden = false;
     loginLoading.hidden = true;
     loginForm.hidden = false;
+    forgotBtn.hidden = false;
+    noAccessBox.hidden = true;
     return;
   }
   logoutBar.hidden = false;
   loginForm.hidden = true;
   forgotBtn.hidden = true;
+  noAccessBox.hidden = true;
   loginLoading.hidden = false;
 
-  unsubscribeSnapshot = onSnapshot(stateDocRef, function(snap){
-    if(!appStarted){
-      var initial;
-      if(snap.exists()){
-        initial = snap.data();
-      }else{
-        try{
-          var seedEl = document.getElementById("seed-data");
-          initial = JSON.parse((seedEl && seedEl.textContent) || "{}");
-        }catch(e){ initial = {}; }
-        if(!initial || !Array.isArray(initial.events)) initial = { events: [] };
-        setDoc(stateDocRef, initial).catch(function(){});
-      }
-      if(!initial || !Array.isArray(initial.events)) initial = { events: [] };
-      window.__initialFugaState = initial;
-      appStarted = true;
-      loginGate.hidden = true;
-      window.__startFugaApp();
+  getDoc(doc(db, "users", user.uid)).then(function(profSnap){
+    var profile = profSnap.exists() ? profSnap.data() : null;
+    var valid = profile && (profile.role === "admin" || (profile.role === "partner" && profile.eventId));
+    if(!valid){
+      showNoAccess();
+      return;
+    }
+    if(profile.role === "admin"){
+      startAsAdmin();
     }else{
-      if(snap.exists() && window.__fugaApplyRemote){
-        window.__fugaApplyRemote(snap.data());
-      }
+      startAsPartner(profile);
     }
-  }, function(err){
-    if(loginGate.hidden === false){
-      showLoginError("Não foi possível carregar os dados (" + (err && err.code || "erro") + ").");
-      loginLoading.hidden = true;
-    }
+  }).catch(function(err){
+    showLoginError("Não foi possível verificar seu acesso (" + (err && err.code || "erro") + ").");
+    loginLoading.hidden = true;
   });
 });
 
-window.__fugaSave = function(newState){
-  return setDoc(stateDocRef, newState);
+window.__fugaSave = function(newState, oldState){
+  var oldMap = {}, newMap = {};
+  ((oldState && oldState.events) || []).forEach(function(e){ oldMap[e.id] = e; });
+  ((newState && newState.events) || []).forEach(function(e){ newMap[e.id] = e; });
+  var batch = writeBatch(db);
+  var hasOps = false;
+  Object.keys(newMap).forEach(function(id){
+    if(JSON.stringify(newMap[id]) !== JSON.stringify(oldMap[id])){
+      batch.set(doc(db,"events",id), newMap[id]);
+      hasOps = true;
+    }
+  });
+  Object.keys(oldMap).forEach(function(id){
+    if(!newMap[id]){
+      batch.delete(doc(db,"events",id));
+      hasOps = true;
+    }
+  });
+  if(!hasOps) return Promise.resolve();
+  return batch.commit();
+};
+
+/* ---------- gestão de acessos de parceiros (só quem for admin) ---------- */
+window.__fugaListPartners = function(){
+  return getDocs(query(usersCol, where("role","==","partner"))).then(function(snap){
+    return snap.docs.map(function(d){ return Object.assign({uid:d.id}, d.data()); });
+  });
+};
+
+window.__fugaCreatePartner = function(email, senha, eventId){
+  var secondaryApp = initializeApp(firebaseConfig, "partner-creator-" + Date.now());
+  var secondaryAuth = getAuth(secondaryApp);
+  return createUserWithEmailAndPassword(secondaryAuth, email, senha)
+    .then(function(cred){
+      var newUid = cred.user.uid;
+      return signOut(secondaryAuth).then(function(){
+        return setDoc(doc(db, "users", newUid), { role: "partner", eventId: eventId, email: email });
+      });
+    })
+    .finally(function(){
+      return deleteApp(secondaryApp).catch(function(){});
+    });
+};
+
+window.__fugaRevokePartner = function(uid){
+  return deleteDoc(doc(db, "users", uid));
 };
 </script>
 </body>

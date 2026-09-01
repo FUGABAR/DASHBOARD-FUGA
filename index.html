@@ -446,7 +446,8 @@ function App(){
     plus:'<svg class="icon" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
     trash:'<svg class="icon" viewBox="0 0 16 16" fill="none"><path d="M3.5 4.5h9M6.5 4.5V3a1 1 0 011-1h1a1 1 0 011 1v1.5M6 7v4.5M10 7v4.5M4.5 4.5l.6 8a1 1 0 001 .95h3.8a1 1 0 001-.95l.6-8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     alert:'<svg class="icon" viewBox="0 0 16 16" fill="none"><path d="M8 2.2l6.5 11.3a.9.9 0 01-.78 1.35H2.28a.9.9 0 01-.78-1.35L8 2.2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 6.3v3.2M8 11.7v.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
-    refresh:'<svg class="icon" viewBox="0 0 16 16" fill="none"><path d="M13.5 8a5.5 5.5 0 10-1.66 3.95M13.5 8V4.2M13.5 8H9.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    refresh:'<svg class="icon" viewBox="0 0 16 16" fill="none"><path d="M13.5 8a5.5 5.5 0 10-1.66 3.95M13.5 8V4.2M13.5 8H9.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    calendar:'<svg class="icon" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="3.5" width="11" height="10.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>'
   };
 
   var state=loadState();
@@ -455,9 +456,15 @@ function App(){
   var toastTimer=null;
   var pendingRemoteState=null;
 
-  if(window.__fugaRole==="partner"&&window.__fugaProfile&&window.__fugaProfile.eventId){
-    ui.view="detail";
-    ui.selectedEventId=window.__fugaProfile.eventId;
+  if(window.__fugaRole==="partner"&&window.__fugaProfile){
+    var __pids=partnerEventIds(window.__fugaProfile);
+    if(__pids.length===1){
+      ui.view="detail";
+      ui.selectedEventId=__pids[0];
+    }else if(ui.view==="detail"&&__pids.indexOf(ui.selectedEventId)===-1){
+      ui.view="dashboard";
+      ui.selectedEventId=null;
+    }
   }
 
   function loadState(){
@@ -502,6 +509,30 @@ function App(){
     return Math.round((a-b)/86400000);
   }
   function findEvent(s,id){for(var i=0;i<s.events.length;i++)if(s.events[i].id===id)return s.events[i];return null;}
+  function partnerEventIds(profile){
+    if(!profile)return [];
+    if(Array.isArray(profile.eventIds)&&profile.eventIds.length)return profile.eventIds;
+    if(profile.eventId)return [profile.eventId];
+    return [];
+  }
+  function gcalTaskUrl(ev,t){
+    if(!t.prazo)return "";
+    var start=new Date(t.prazo+"T00:00:00");
+    var end=new Date(start.getTime());
+    end.setDate(end.getDate()+1);
+    function ymd(d){return d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0");}
+    var ladoLabel="";
+    for(var i=0;i<LADOS.length;i++)if(LADOS[i][0]===t.lado)ladoLabel=LADOS[i][1];
+    var detailLines=[];
+    if(t.categoria)detailLines.push("Categoria: "+t.categoria);
+    if(ladoLabel)detailLines.push("Lado: "+ladoLabel);
+    if(t.responsavel)detailLines.push("Responsável: "+t.responsavel);
+    if(t.obs)detailLines.push("Obs: "+t.obs);
+    detailLines.push("Painel Fuga · "+(ev.nome||"Evento"));
+    var text=encodeURIComponent((ev.nome||"Evento")+" — "+(t.titulo||"Tarefa"));
+    var details=encodeURIComponent(detailLines.join("\n"));
+    return "https://calendar.google.com/calendar/render?action=TEMPLATE&text="+text+"&dates="+ymd(start)+"/"+ymd(end)+"&details="+details;
+  }
 
   function toast(msg){
     var el=document.getElementById("toast");
@@ -693,9 +724,11 @@ function App(){
     }).join("");
 
     var tableOrEmpty=events.length===0
-      ? '<div class="empty"><h3>Nenhum evento cadastrado</h3><p>Cadastre o primeiro evento para começar a acompanhar passagens, hotel, som, riders, transfers e ingressos em um só lugar.</p>'
-        +(readOnly||window.__fugaRole!=="admin"?"":'<button class="btn btn-primary" data-action="new-event">'+ICONS.plus+"Novo evento</button>")
-        +'</div>'
+      ? (window.__fugaRole==="partner"
+        ? '<div class="empty"><h3>Nenhum evento vinculado</h3><p>Sua conta ainda não tem nenhum evento vinculado. Peça para quem administra o painel liberar o acesso.</p></div>'
+        : '<div class="empty"><h3>Nenhum evento cadastrado</h3><p>Cadastre o primeiro evento para começar a acompanhar passagens, hotel, som, riders, transfers e ingressos em um só lugar.</p>'
+          +(readOnly?"":'<button class="btn btn-primary" data-action="new-event">'+ICONS.plus+"Novo evento</button>")
+          +'</div>')
       : (filtered.length===0
         ? '<div class="empty"><h3>Nada encontrado</h3><p>Ajuste a busca ou os filtros para ver outros eventos.</p></div>'
         : '<div class="table-wrap"><table><thead><tr>'
@@ -812,7 +845,7 @@ function App(){
         +'<td class="col-lado"><select data-entity="task" data-id="'+t.id+'" data-field="lado"'+dis+'>'+LADOS.map(function(l){return '<option value="'+l[0]+'"'+(t.lado===l[0]?" selected":"")+'>'+l[1]+"</option>";}).join("")+"</select></td>"
         +'<td class="col-status"><select data-entity="task" data-id="'+t.id+'" data-field="status"'+dis+'>'+STATUS_TASK.map(function(s){return '<option value="'+s[0]+'"'+(t.status===s[0]?" selected":"")+'>'+s[1]+"</option>";}).join("")+"</select></td>"
         +'<td><input type="text" value="'+esc(t.responsavel||"")+'" placeholder="Quem cuida" data-entity="task" data-id="'+t.id+'" data-field="responsavel"'+dis+'></td>'
-        +'<td><input type="date" value="'+esc(t.prazo||"")+'" data-entity="task" data-id="'+t.id+'" data-field="prazo"'+dis+'>'+(od?'<div class="alert-flag">'+ICONS.alert+"atrasada</div>":soon?'<div class="alert-flag warn">'+ICONS.alert+"prazo próximo</div>":"")+'</td>'
+        +'<td><input type="date" value="'+esc(t.prazo||"")+'" data-entity="task" data-id="'+t.id+'" data-field="prazo"'+dis+'>'+(od?'<div class="alert-flag">'+ICONS.alert+"atrasada</div>":soon?'<div class="alert-flag warn">'+ICONS.alert+"prazo próximo</div>":"")+(t.prazo?'<button type="button" class="btn btn-ghost btn-sm" style="margin-top:4px;padding:4px 6px" data-action="add-to-gcal" data-id="'+t.id+'" title="Adicionar ao Google Calendar">'+ICONS.calendar+"</button>":"")+'</td>'
         +'<td><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="0.01" value="'+(t.valor==null?"":t.valor)+'" placeholder="0,00" data-entity="task" data-id="'+t.id+'" data-field="valor"'+dis+'></span></td>'
         +'<td class="col-obs"><textarea rows="1" placeholder="Observações" data-entity="task" data-id="'+t.id+'" data-field="obs"'+dis+'>'+esc(t.obs||"")+"</textarea></td>"
         +'<td>'+(readOnly?"":'<button class="btn btn-danger btn-sm" data-action="remove-task" data-id="'+t.id+'" title="Remover tarefa">'+ICONS.trash+"</button>")+'</td>'
@@ -840,7 +873,7 @@ function App(){
 
     return ""
       +(readOnly?'<div class="banner">'+ICONS.alert+"Suas alterações NÃO estão sendo salvas nesta janela — peça a quem compartilhou o link para conferir sua permissão de edição.</div>":"")
-      +'<div class="detail-topbar">'+(window.__fugaRole==="partner"?'<span class="back-link" style="cursor:default;text-decoration:none">'+esc(ev.nome||"Evento")+'</span>':'<button class="back-link" data-action="back">'+iconLeft()+"Todos os eventos</button>")+refreshBarHtml()+"</div>"
+      +'<div class="detail-topbar">'+(window.__fugaRole==="partner"&&partnerEventIds(window.__fugaProfile).length<=1?'<span class="back-link" style="cursor:default;text-decoration:none">'+esc(ev.nome||"Evento")+'</span>':'<button class="back-link" data-action="back">'+iconLeft()+(window.__fugaRole==="partner"?"Meus eventos":"Todos os eventos")+'</button>')+refreshBarHtml()+"</div>"
       +'<div class="detail-head"><div class="detail-title-row">'
       +'<input class="title-input" value="'+esc(ev.nome||"")+'" placeholder="Nome do evento" data-entity="event" data-id="'+ev.id+'" data-field="nome"'+dis+'>'
       +'<span class="pill pill-'+ev.status+'">'+statusLabel(STATUS_EVENTO,ev.status)+'</span>'
@@ -983,7 +1016,7 @@ function App(){
   function accessModalHtml(){
     var eventOptions=(state.events||[]).map(function(e){return '<option value="'+e.id+'">'+esc(e.nome||"Sem nome")+'</option>';}).join("");
     return '<div class="modal-body"><h2>Acessos de parceiros</h2>'
-      +'<p class="hint">Cada parceiro só enxerga e edita o evento vinculado a ele — nada dos outros eventos.</p>'
+      +'<p class="hint">Cada parceiro só enxerga e edita os eventos vinculados a ele — nada dos outros. Um parceiro pode ter mais de um evento: use "Adicionar" na lista abaixo.</p>'
       +'<div id="accessListBox" class="hint">Carregando…</div>'
       +'<hr style="border:none;border-top:1px solid var(--border);margin:16px 0">'
       +'<h3 style="font-size:14px;margin:0 0 10px">Adicionar acesso</h3>'
@@ -1013,11 +1046,20 @@ function App(){
       if(!box2)return;
       if(!list.length){box2.className="hint";box2.textContent="Nenhum parceiro com acesso ainda.";return;}
       box2.className="";
-      box2.innerHTML='<div class="table-wrap"><table><thead><tr><th>E-mail</th><th>Evento</th><th></th></tr></thead><tbody>'
+      box2.innerHTML='<div class="table-wrap"><table><thead><tr><th>E-mail</th><th>Eventos</th><th>Adicionar evento</th><th></th></tr></thead><tbody>'
         +list.map(function(p){
-          var pev=findEvent(state,p.eventId);
-          return '<tr><td>'+esc(p.email||"")+'</td><td>'+esc(pev?pev.nome:"(evento não encontrado)")+'</td>'
-            +'<td><button type="button" class="btn btn-danger btn-sm" data-action="revoke-partner-access" data-uid="'+esc(p.uid)+'">'+ICONS.trash+"Revogar</button></td></tr>";
+          var pids=partnerEventIds(p);
+          var chips=pids.length?pids.map(function(eid){
+            var pev=findEvent(state,eid);
+            return '<span class="pill pill-proprio" style="margin:2px 4px 2px 0;display:inline-flex;align-items:center;gap:4px">'+esc(pev?pev.nome:"(evento removido)")
+              +'<button type="button" data-action="remove-partner-event" data-uid="'+esc(p.uid)+'" data-eventid="'+esc(eid)+'" title="Remover este evento do parceiro" style="background:none;border:none;color:inherit;cursor:pointer;padding:0;font-weight:700;line-height:1">×</button></span>';
+          }).join(""):'<span class="hint">Nenhum evento</span>';
+          var availableEvents=(state.events||[]).filter(function(e){return pids.indexOf(e.id)===-1;});
+          var addControl=availableEvents.length
+            ?'<select class="access-add-select" data-uid="'+esc(p.uid)+'">'+availableEvents.map(function(e){return '<option value="'+e.id+'">'+esc(e.nome||"Sem nome")+'</option>';}).join("")+'</select> <button type="button" class="btn btn-ghost btn-sm" data-action="add-partner-event" data-uid="'+esc(p.uid)+'">'+ICONS.plus+"Adicionar</button>"
+            :'<span class="hint">—</span>';
+          return '<tr><td>'+esc(p.email||"")+'</td><td>'+chips+'</td><td>'+addControl+'</td>'
+            +'<td><button type="button" class="btn btn-danger btn-sm" data-action="revoke-partner-access" data-uid="'+esc(p.uid)+'" title="Revogar todo o acesso desse parceiro">'+ICONS.trash+"Revogar tudo</button></td></tr>";
         }).join("")
         +"</tbody></table></div>";
     }).catch(function(err){
@@ -1040,7 +1082,7 @@ function App(){
     var el=e.target.closest("[data-action]");
     if(!el)return;
     var action=el.dataset.action;
-    var PARTNER_BLOCKED={"new-event":1,"create-event":1,"delete-event":1,"back":1,"open-access-modal":1,"create-partner-access":1,"revoke-partner-access":1};
+    var PARTNER_BLOCKED={"new-event":1,"create-event":1,"delete-event":1,"open-access-modal":1,"create-partner-access":1,"revoke-partner-access":1,"add-partner-event":1,"remove-partner-event":1};
     if(window.__fugaRole==="partner"&&PARTNER_BLOCKED[action])return;
     if(action==="refresh-now"){
       saveUi();location.reload();
@@ -1133,7 +1175,37 @@ function App(){
       }).catch(function(err){
         toast("Não foi possível revogar ("+(err&&err.code||"erro")+").");
       });
-    }else if(action==="remove-task"){
+    }else if(action==="add-partner-event"){
+      if(!window.__fugaAddPartnerEvent)return;
+      var addSelect=document.querySelector('.access-add-select[data-uid="'+el.dataset.uid+'"]');
+      var addEventId=addSelect?addSelect.value:"";
+      if(!addEventId){toast("Escolha um evento para adicionar.");return;}
+      el.disabled=true;
+      window.__fugaAddPartnerEvent(el.dataset.uid,addEventId).then(function(){
+        toast("Evento adicionado ao acesso do parceiro.");
+        refreshAccessList();
+      }).catch(function(err){
+        toast("Não foi possível adicionar ("+(err&&err.code||"erro")+").");
+      }).finally(function(){
+        el.disabled=false;
+      });
+    }else if(action==="remove-partner-event"){
+      if(!window.__fugaRemovePartnerEvent)return;
+      if(!confirm("Remover esse evento do acesso do parceiro? Ele deixa de ver esse evento, mas continua com acesso aos outros."))return;
+      window.__fugaRemovePartnerEvent(el.dataset.uid,el.dataset.eventid).then(function(){
+        toast("Evento removido do acesso do parceiro.");
+        refreshAccessList();
+      }).catch(function(err){
+        toast("Não foi possível remover ("+(err&&err.code||"erro")+").");
+      });
+    }else if(action==="add-to-gcal"){
+        var evGc=findEvent(state,ui.selectedEventId);
+        if(!evGc)return;
+        var tGc=evGc.tasks.filter(function(x){return x.id===el.dataset.id;})[0];
+        if(!tGc)return;
+        var gcalUrl=gcalTaskUrl(evGc,tGc);
+        if(gcalUrl)window.open(gcalUrl,"_blank","noopener");
+      }else if(action==="remove-task"){
       var ns3=deepClone(state),ev3=findEvent(ns3,ui.selectedEventId);
       ev3.tasks=ev3.tasks.filter(function(t){return t.id!==el.dataset.id;});
       persist(ns3);
@@ -1431,12 +1503,21 @@ function startAsAdmin(){
   });
 }
 
+function profileEventIds(profile){
+  if(!profile) return [];
+  if(Array.isArray(profile.eventIds) && profile.eventIds.length) return profile.eventIds;
+  if(profile.eventId) return [profile.eventId];
+  return [];
+}
+
 function startAsPartner(profile){
   window.__fugaRole = "partner";
   window.__fugaProfile = profile;
-  var evRef = doc(db, "events", profile.eventId);
-  unsubscribeSnapshot = onSnapshot(evRef, function(snap){
-    var events = snap.exists() ? [eventDocData(snap)] : [];
+  var ids = profileEventIds(profile);
+  var eventsMap = {};
+  var unsubs = [];
+  function pushUpdate(){
+    var events = ids.map(function(id){ return eventsMap[id]; }).filter(function(e){ return !!e; });
     if(!appStarted){
       window.__initialFugaState = { events: events };
       appStarted = true;
@@ -1445,7 +1526,20 @@ function startAsPartner(profile){
     }else if(window.__fugaApplyRemote){
       window.__fugaApplyRemote({ events: events });
     }
-  }, handleSnapshotError);
+  }
+  if(!ids.length){
+    pushUpdate();
+    unsubscribeSnapshot = function(){};
+    return;
+  }
+  ids.forEach(function(id){
+    var unsub = onSnapshot(doc(db, "events", id), function(snap){
+      if(snap.exists()){ eventsMap[id] = eventDocData(snap); } else { delete eventsMap[id]; }
+      pushUpdate();
+    }, handleSnapshotError);
+    unsubs.push(unsub);
+  });
+  unsubscribeSnapshot = function(){ unsubs.forEach(function(u){ u(); }); };
 }
 
 function showNoAccess(){
@@ -1475,7 +1569,7 @@ onAuthStateChanged(auth, function(user){
 
   getDoc(doc(db, "users", user.uid)).then(function(profSnap){
     var profile = profSnap.exists() ? profSnap.data() : null;
-    var valid = profile && (profile.role === "admin" || (profile.role === "partner" && profile.eventId));
+    var valid = profile && (profile.role === "admin" || (profile.role === "partner" && profileEventIds(profile).length > 0));
     if(!valid){
       showNoAccess();
       return;
@@ -1527,12 +1621,31 @@ window.__fugaCreatePartner = function(email, senha, eventId){
     .then(function(cred){
       var newUid = cred.user.uid;
       return signOut(secondaryAuth).then(function(){
-        return setDoc(doc(db, "users", newUid), { role: "partner", eventId: eventId, email: email });
+        return setDoc(doc(db, "users", newUid), { role: "partner", eventIds: [eventId], email: email });
       });
     })
     .finally(function(){
       return deleteApp(secondaryApp).catch(function(){});
     });
+};
+
+window.__fugaAddPartnerEvent = function(uid, eventId){
+  var ref = doc(db, "users", uid);
+  return getDoc(ref).then(function(snap){
+    var data = snap.exists() ? snap.data() : {};
+    var base = profileEventIds(data);
+    if(base.indexOf(eventId) === -1) base = base.concat([eventId]);
+    return setDoc(ref, { eventIds: base }, { merge: true });
+  });
+};
+
+window.__fugaRemovePartnerEvent = function(uid, eventId){
+  var ref = doc(db, "users", uid);
+  return getDoc(ref).then(function(snap){
+    var data = snap.exists() ? snap.data() : {};
+    var base = profileEventIds(data).filter(function(id){ return id !== eventId; });
+    return setDoc(ref, { eventIds: base }, { merge: true });
+  });
 };
 
 window.__fugaRevokePartner = function(uid){

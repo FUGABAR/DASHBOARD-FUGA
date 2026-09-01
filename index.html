@@ -569,6 +569,9 @@ function App(){
     var vendasDia=Number(ev.vendasDiaEsperadas)||0;
     var refLote=loteAtual(ev)||lotes[lotes.length-1]||null;
     var precoRef=refLote?Number(refLote.preco)||0:0;
+    var isCollab=ev.tipo==="collab";
+    var percParceiroPorta=ev.percParceiroPorta==null?0:Number(ev.percParceiroPorta);
+    var percParceiroCopa=ev.percParceiroCopa==null?0:Number(ev.percParceiroCopa);
 
     function cenario(ticketsPagos,receitaTickets,presencaPagante){
       var cortesiaPessoas=presencaPagante*(cortesiaPct/100);
@@ -578,10 +581,15 @@ function App(){
       var receitaTotal=receitaTickets+lucroCopa;
       var saldo=receitaTotal-totalCustos;
       var ingressosNecessarios=(saldo<0&&precoRef>0)?Math.ceil((-saldo)/precoRef):0;
+      var repassePorta=isCollab?receitaTickets*(percParceiroPorta/100):0;
+      var repasseCopa=isCollab?lucroCopa*(percParceiroCopa/100):0;
+      var repasseTotal=repassePorta+repasseCopa;
+      var saldoFuga=saldo-repasseTotal;
       return {
         ingressos:ticketsPagos,presencaTotal:presencaTotal,receitaIngressos:receitaTickets,
         receitaBar:receitaBar,lucroCopa:lucroCopa,receitaTotal:receitaTotal,saldo:saldo,
-        ingressosNecessarios:ingressosNecessarios
+        ingressosNecessarios:ingressosNecessarios,
+        repassePorta:repassePorta,repasseCopa:repasseCopa,repasseTotal:repasseTotal,saldoFuga:saldoFuga
       };
     }
 
@@ -596,7 +604,8 @@ function App(){
     return {
       vendidos:vendidos,totalCustos:totalCustos,gastoBar:gastoBar,margemPct:margemPct,
       quebraPct:quebraPct,cortesiaPct:cortesiaPct,vendasDia:vendasDia,
-      refLote:refLote,precoRef:precoRef,atual:atual,projetado:projetado
+      refLote:refLote,precoRef:precoRef,atual:atual,projetado:projetado,
+      isCollab:isCollab,percParceiroPorta:percParceiroPorta,percParceiroCopa:percParceiroCopa
     };
   }
 
@@ -716,8 +725,12 @@ function App(){
       +'<div class="field"><label>Local</label><select data-entity="event" data-id="'+ev.id+'" data-field="local"'+dis+'><option value="">Selecione…</option>'+LOCAIS.map(function(loc){return '<option value="'+loc+'"'+((ev.local||ev.cidade)===loc?" selected":"")+'>'+loc+"</option>";}).join("")+'</select></div>'
       +'<div class="field"><label>Tipo</label><select data-entity="event" data-id="'+ev.id+'" data-field="tipo"'+dis+'><option value="collab"'+(ev.tipo==="collab"?" selected":"")+'>Collab</option><option value="proprio"'+(ev.tipo==="proprio"?" selected":"")+'>Próprio</option></select></div>'
       +'<div class="field"><label>Status</label><select data-entity="event" data-id="'+ev.id+'" data-field="status"'+dis+'>'+STATUS_EVENTO.map(function(s){return '<option value="'+s[0]+'"'+(ev.status===s[0]?" selected":"")+'>'+s[1]+"</option>";}).join("")+'</select></div>'
-      +(ev.tipo==="collab"?'<div class="field span2"><label>Parceiro</label><input type="text" value="'+esc(ev.parceiro||"")+'" placeholder="Nome do parceiro / casa parceira" data-entity="event" data-id="'+ev.id+'" data-field="parceiro"'+dis+'></div>':"")
-      +'<div class="field span'+(ev.tipo==="collab"?"2":"4")+'"><label>Notas gerais</label><textarea data-entity="event" data-id="'+ev.id+'" data-field="notas" placeholder="Observações gerais do evento…"'+dis+'>'+esc(ev.notas||"")+"</textarea></div>"
+      +(ev.tipo==="collab"?(
+        '<div class="field span2"><label>Parceiro</label><input type="text" value="'+esc(ev.parceiro||"")+'" placeholder="Nome do parceiro / casa parceira" data-entity="event" data-id="'+ev.id+'" data-field="parceiro"'+dis+'></div>'
+        +'<div class="field"><label>% da porta p/ parceiro</label><input type="number" step="1" min="0" max="100" style="min-width:100px" value="'+(ev.percParceiroPorta==null?"":ev.percParceiroPorta)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="percParceiroPorta"'+dis+'></div>'
+        +'<div class="field"><label>% da copa p/ parceiro</label><input type="number" step="1" min="0" max="100" style="min-width:100px" value="'+(ev.percParceiroCopa==null?"":ev.percParceiroCopa)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="percParceiroCopa"'+dis+'></div>'
+      ):"")
+      +'<div class="field span4"><label>Notas gerais</label><textarea data-entity="event" data-id="'+ev.id+'" data-field="notas" placeholder="Observações gerais do evento…"'+dis+'>'+esc(ev.notas||"")+"</textarea></div>"
       +"</div>"
       +'<div class="field" style="margin-bottom:20px"><label>Espaços utilizados</label><div class="chip-row">'
       +ESPACOS.map(function(esp){
@@ -855,14 +868,26 @@ function App(){
       +'<div class="field"><label>Quebra de comparecimento (%)</label><input type="number" step="1" style="min-width:90px" value="'+(ev.quebraPct==null?10:ev.quebraPct)+'" data-entity="event" data-id="'+ev.id+'" data-field="quebraPct"'+dis+'></div>'
       +'<div class="field"><label>Cortesias (%)</label><input type="number" step="1" style="min-width:90px" value="'+(ev.cortesiaPct==null?10:ev.cortesiaPct)+'" data-entity="event" data-id="'+ev.id+'" data-field="cortesiaPct"'+dis+'></div>'
       +'<div class="field"><label>Vendas extras esperadas no dia</label><input type="number" step="1" style="min-width:110px" value="'+(ev.vendasDiaEsperadas==null?"":ev.vendasDiaEsperadas)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="vendasDiaEsperadas"'+dis+'></div>'
+      +(f.isCollab?(
+        '<div class="field"><label>% da porta p/ parceiro</label><input type="number" step="1" min="0" max="100" style="min-width:100px" value="'+(ev.percParceiroPorta==null?"":ev.percParceiroPorta)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="percParceiroPorta"'+dis+'></div>'
+        +'<div class="field"><label>% da copa p/ parceiro</label><input type="number" step="1" min="0" max="100" style="min-width:100px" value="'+(ev.percParceiroCopa==null?"":ev.percParceiroCopa)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="percParceiroCopa"'+dis+'></div>'
+      ):"")
       +'</div>'
       +'<p class="hint" style="margin:-8px 0 16px">Vendas no dia é uma estimativa sua (clima, feriados, eventos concorrentes) — some ao total de pré-venda para simular um cenário mais otimista, sem prometer lucro.</p>'
       +'<div class="stats fin-grid">'
       +'<div class="stat"><span class="n" style="font-size:22px">'+f.vendidos+'</span><span class="l">Ingressos vendidos (pré-venda)</span></div>'
       +'<div class="stat"><span class="n" style="font-size:22px">'+fmtMoney(a.receitaIngressos)+'</span><span class="l">Receita de ingressos</span></div>'
       +'<div class="stat"><span class="n" style="font-size:22px">'+fmtMoney(a.lucroCopa)+'</span><span class="l">Lucro de copa ('+f.margemPct+'%)</span><span class="sub mono">presença ajustada: '+Math.round(a.presencaTotal)+' pessoas</span></div>'
-      +'<div class="stat"><span class="n" style="font-size:22px;color:'+(a.saldo<0?"var(--bad)":"var(--good)")+'">'+fmtMoney(a.saldo)+'</span><span class="l">Resultado atual (ingressos + copa − custos)</span></div>'
+      +'<div class="stat"><span class="n" style="font-size:22px;color:'+(a.saldo<0?"var(--bad)":"var(--good)")+'">'+fmtMoney(a.saldo)+'</span><span class="l">Resultado do evento (ingressos + copa − custos)</span></div>'
       +'</div>'
+      +(f.isCollab?(
+        '<div class="stats fin-grid" style="margin-top:12px">'
+        +'<div class="stat"><span class="n" style="font-size:20px">'+fmtMoney(a.repassePorta)+'</span><span class="l">Repasse da porta ao parceiro ('+f.percParceiroPorta+'%)</span></div>'
+        +'<div class="stat"><span class="n" style="font-size:20px">'+fmtMoney(a.repasseCopa)+'</span><span class="l">Repasse da copa ao parceiro ('+f.percParceiroCopa+'%)</span></div>'
+        +'<div class="stat"><span class="n" style="font-size:20px">'+fmtMoney(a.repasseTotal)+'</span><span class="l">Total a repassar ao parceiro'+(ev.parceiro?" ("+esc(ev.parceiro)+")":"")+'</span></div>'
+        +'<div class="stat"><span class="n" style="font-size:22px;color:'+(a.saldoFuga<0?"var(--bad)":"var(--good)")+'">'+fmtMoney(a.saldoFuga)+'</span><span class="l">Fica com a Fuga (resultado − repasse)</span></div>'
+        +'</div>'
+      ):"")
       +bars
       +projecao
       +"</div>";
@@ -877,6 +902,8 @@ function App(){
       +'<div class="field"><label>Local</label><select id="neLocal"><option value="">Selecione…</option>'+LOCAIS.map(function(loc){return "<option>"+loc+"</option>";}).join("")+'</select></div>'
       +'<div class="field"><label>Tipo</label><select id="neTipo"><option value="collab">Collab</option><option value="proprio">Próprio</option></select></div>'
       +'<div class="field"><label>Parceiro (se collab)</label><input type="text" id="neParceiro" placeholder="Nome do parceiro"></div>'
+      +'<div class="field"><label>% da porta p/ parceiro</label><input type="number" step="1" min="0" max="100" id="neParceiroPercPorta" placeholder="0"></div>'
+      +'<div class="field"><label>% da copa p/ parceiro</label><input type="number" step="1" min="0" max="100" id="neParceiroPercCopa" placeholder="0"></div>'
       +"</div>"
       +'<div class="modal-actions"><button class="btn btn-ghost" data-action="close-modal">Cancelar</button><button class="btn btn-primary" data-action="create-event">'+ICONS.plus+"Criar evento</button></div>"
       +"</div>";
@@ -925,6 +952,8 @@ function App(){
         local:document.getElementById("neLocal").value,
         tipo:tipo,
         parceiro:tipo==="collab"?(document.getElementById("neParceiro").value||"").trim():"",
+        percParceiroPorta:tipo==="collab"?(parseFloat(document.getElementById("neParceiroPercPorta").value)||0):0,
+        percParceiroCopa:tipo==="collab"?(parseFloat(document.getElementById("neParceiroPercCopa").value)||0):0,
         status:"planejamento",
         notas:"",
         espacos:[],
@@ -1019,7 +1048,7 @@ function App(){
     if(entity==="event"){
       var ev=findEvent(ns,id);if(!ev)return;
       ev[field]=value;
-      if(field==="tipo"&&value==="proprio")ev.parceiro="";
+      if(field==="tipo"&&value==="proprio"){ev.parceiro="";ev.percParceiroPorta=0;ev.percParceiroCopa=0;}
     }else if(entity==="task"){
       var ev2=findEvent(ns,ui.selectedEventId);if(!ev2)return;
       var t=ev2.tasks.filter(function(x){return x.id===id;})[0];if(!t)return;

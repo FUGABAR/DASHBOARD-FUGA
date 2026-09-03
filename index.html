@@ -840,34 +840,40 @@ function App(){
     var taskRows=ev.tasks.map(function(t){
       var od=t.prazo&&t.prazo<todayISO()&&t.status!=="concluido";
       var soon=!od&&t.prazo&&t.status!=="concluido"&&daysUntil(t.prazo)!==null&&daysUntil(t.prazo)<=5&&daysUntil(t.prazo)>=0;
+      var rowDis=(readOnly||window.__fugaRole==="partner")?" disabled":"";
+      var rowLocked=readOnly||window.__fugaRole==="partner";
       return '<tr>'
-        +'<td><div style="font-weight:600">'+esc(t.titulo)+'</div><div class="event-sub">'+esc(t.categoria)+"</div></td>"
-        +'<td class="col-lado"><select data-entity="task" data-id="'+t.id+'" data-field="lado"'+dis+'>'+LADOS.map(function(l){return '<option value="'+l[0]+'"'+(t.lado===l[0]?" selected":"")+'>'+l[1]+"</option>";}).join("")+"</select></td>"
-        +'<td class="col-status"><select data-entity="task" data-id="'+t.id+'" data-field="status"'+dis+'>'+STATUS_TASK.map(function(s){return '<option value="'+s[0]+'"'+(t.status===s[0]?" selected":"")+'>'+s[1]+"</option>";}).join("")+"</select></td>"
-        +'<td><input type="text" value="'+esc(t.responsavel||"")+'" placeholder="Quem cuida" data-entity="task" data-id="'+t.id+'" data-field="responsavel"'+dis+'></td>'
-        +'<td><input type="date" value="'+esc(t.prazo||"")+'" data-entity="task" data-id="'+t.id+'" data-field="prazo"'+dis+'>'+(od?'<div class="alert-flag">'+ICONS.alert+"atrasada</div>":soon?'<div class="alert-flag warn">'+ICONS.alert+"prazo próximo</div>":"")+(t.prazo?'<button type="button" class="btn btn-ghost btn-sm" style="margin-top:4px;padding:4px 6px" data-action="add-to-gcal" data-id="'+t.id+'" title="Adicionar ao Google Calendar">'+ICONS.calendar+"</button>":"")+'</td>'
-        +'<td><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" value="'+(t.valor==null?"":t.valor)+'" placeholder="0,00" data-entity="task" data-id="'+t.id+'" data-field="valor"'+dis+'></span></td>'
-        +'<td class="col-obs"><textarea rows="1" placeholder="Observações" data-entity="task" data-id="'+t.id+'" data-field="obs"'+dis+'>'+esc(t.obs||"")+"</textarea></td>"
-        +'<td>'+(readOnly?"":'<button class="btn btn-danger btn-sm" data-action="remove-task" data-id="'+t.id+'" title="Remover tarefa">'+ICONS.trash+"</button>")+'</td>'
+        +'<td><div style="font-weight:600">'+esc(t.titulo)+'</div><div class="event-sub">'+esc(t.categoria)+(t.criadoPor==="partner"?" · adicionada pelo parceiro":"")+"</div></td>"
+        +'<td class="col-lado"><select data-entity="task" data-id="'+t.id+'" data-field="lado"'+rowDis+'>'+LADOS.map(function(l){return '<option value="'+l[0]+'"'+(t.lado===l[0]?" selected":"")+'>'+l[1]+"</option>";}).join("")+"</select></td>"
+        +'<td class="col-status"><select data-entity="task" data-id="'+t.id+'" data-field="status"'+rowDis+'>'+STATUS_TASK.map(function(s){return '<option value="'+s[0]+'"'+(t.status===s[0]?" selected":"")+'>'+s[1]+"</option>";}).join("")+"</select></td>"
+        +'<td><input type="text" value="'+esc(t.responsavel||"")+'" placeholder="Quem cuida" data-entity="task" data-id="'+t.id+'" data-field="responsavel"'+rowDis+'></td>'
+        +'<td><input type="date" value="'+esc(t.prazo||"")+'" data-entity="task" data-id="'+t.id+'" data-field="prazo"'+rowDis+'>'+(od?'<div class="alert-flag">'+ICONS.alert+"atrasada</div>":soon?'<div class="alert-flag warn">'+ICONS.alert+"prazo próximo</div>":"")+(t.prazo?'<button type="button" class="btn btn-ghost btn-sm" style="margin-top:4px;padding:4px 6px" data-action="add-to-gcal" data-id="'+t.id+'" title="Adicionar ao Google Calendar">'+ICONS.calendar+"</button>":"")+'</td>'
+        +'<td><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" value="'+(t.valor==null?"":t.valor)+'" placeholder="0,00" data-entity="task" data-id="'+t.id+'" data-field="valor"'+rowDis+'></span></td>'
+        +'<td class="col-obs"><textarea rows="1" placeholder="Observações" data-entity="task" data-id="'+t.id+'" data-field="obs"'+rowDis+'>'+esc(t.obs||"")+"</textarea></td>"
+        +'<td>'+(rowLocked?"":'<button class="btn btn-danger btn-sm" data-action="remove-task" data-id="'+t.id+'" title="Remover tarefa">'+ICONS.trash+"</button>")+'</td>'
         +"</tr>";
     }).join("");
 
     var loteRows=(ev.lotes||[]).map(function(l){
+      var rowDis=(readOnly||window.__fugaRole==="partner")?" disabled":"";
+      var rowLocked=readOnly||window.__fugaRole==="partner";
       return '<tr>'
-        +'<td><select data-entity="lote" data-id="'+l.id+'" data-field="nome"'+dis+'>'+tipoIngressoOptionsHtml(l.nome)+"</select></td>"
-        +'<td><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" value="'+(l.preco==null?"":l.preco)+'" placeholder="0,00" data-entity="lote" data-id="'+l.id+'" data-field="preco"'+dis+'></span></td>'
-        +'<td><input type="number" value="'+(l.vendidos==null?0:l.vendidos)+'" placeholder="0" data-entity="lote" data-id="'+l.id+'" data-field="vendidos"'+dis+'></td>'
-        +'<td><select data-entity="lote" data-id="'+l.id+'" data-field="status"'+dis+'>'+STATUS_LOTE.map(function(s){return '<option value="'+s[0]+'"'+(l.status===s[0]?" selected":"")+'>'+s[1]+"</option>";}).join("")+"</select></td>"
-        +'<td>'+(readOnly?"":'<button class="btn btn-danger btn-sm" data-action="remove-lote" data-id="'+l.id+'" title="Remover lote">'+ICONS.trash+"</button>")+'</td>'
+        +'<td><select data-entity="lote" data-id="'+l.id+'" data-field="nome"'+rowDis+'>'+tipoIngressoOptionsHtml(l.nome)+"</select>"+(l.criadoPor==="partner"?'<div class="event-sub">adicionado pelo parceiro</div>':"")+"</td>"
+        +'<td><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" value="'+(l.preco==null?"":l.preco)+'" placeholder="0,00" data-entity="lote" data-id="'+l.id+'" data-field="preco"'+rowDis+'></span></td>'
+        +'<td><input type="number" value="'+(l.vendidos==null?0:l.vendidos)+'" placeholder="0" data-entity="lote" data-id="'+l.id+'" data-field="vendidos"'+rowDis+'></td>'
+        +'<td><select data-entity="lote" data-id="'+l.id+'" data-field="status"'+rowDis+'>'+STATUS_LOTE.map(function(s){return '<option value="'+s[0]+'"'+(l.status===s[0]?" selected":"")+'>'+s[1]+"</option>";}).join("")+"</select></td>"
+        +'<td>'+(rowLocked?"":'<button class="btn btn-danger btn-sm" data-action="remove-lote" data-id="'+l.id+'" title="Remover lote">'+ICONS.trash+"</button>")+'</td>'
         +"</tr>";
     }).join("");
 
     var custoRows=(ev.custos||[]).map(function(c){
+      var rowDis=(readOnly||window.__fugaRole==="partner")?" disabled":"";
+      var rowLocked=readOnly||window.__fugaRole==="partner";
       return '<tr>'
-        +'<td><input type="text" value="'+esc(c.descricao||"")+'" data-entity="custo" data-id="'+c.id+'" data-field="descricao"'+dis+'></td>'
-        +'<td><select data-entity="custo" data-id="'+c.id+'" data-field="categoria"'+dis+'>'+CATEGORIAS_CUSTO.map(function(cat){return '<option'+(c.categoria===cat?" selected":"")+'>'+cat+"</option>";}).join("")+"</select></td>"
-        +'<td><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" value="'+(c.valor==null?"":c.valor)+'" placeholder="0,00" data-entity="custo" data-id="'+c.id+'" data-field="valor"'+dis+'></span></td>'
-        +'<td>'+(readOnly?"":'<button class="btn btn-danger btn-sm" data-action="remove-custo" data-id="'+c.id+'" title="Remover custo">'+ICONS.trash+"</button>")+'</td>'
+        +'<td><input type="text" value="'+esc(c.descricao||"")+'" data-entity="custo" data-id="'+c.id+'" data-field="descricao"'+rowDis+'>'+(c.criadoPor==="partner"?'<div class="event-sub">adicionado pelo parceiro</div>':"")+'</td>'
+        +'<td><select data-entity="custo" data-id="'+c.id+'" data-field="categoria"'+rowDis+'>'+CATEGORIAS_CUSTO.map(function(cat){return '<option'+(c.categoria===cat?" selected":"")+'>'+cat+"</option>";}).join("")+"</select></td>"
+        +'<td><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" value="'+(c.valor==null?"":c.valor)+'" placeholder="0,00" data-entity="custo" data-id="'+c.id+'" data-field="valor"'+rowDis+'></span></td>'
+        +'<td>'+(rowLocked?"":'<button class="btn btn-danger btn-sm" data-action="remove-custo" data-id="'+c.id+'" title="Remover custo">'+ICONS.trash+"</button>")+'</td>'
         +"</tr>";
     }).join("");
 
@@ -891,6 +897,10 @@ function App(){
         +'<div class="field"><label>Categoria</label><select id="newTaskCategoria">'+CATEGORIAS.map(function(c){return "<option>"+c+"</option>";}).join("")+"</select></div>"
         +'<div class="field grow"><label>Título da tarefa</label><input type="text" id="newTaskTitulo" placeholder="Ex.: Confirmar horário de passagem de som"></div>'
         +'<div class="field"><label>Lado</label><select id="newTaskLado">'+LADOS.map(function(l){return '<option value="'+l[0]+'">'+l[1]+"</option>";}).join("")+"</select></div>"
+        +'<div class="field"><label>Responsável</label><input type="text" id="newTaskResponsavel" placeholder="Quem cuida"></div>'
+        +'<div class="field"><label>Prazo</label><input type="date" id="newTaskPrazo"></div>'
+        +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newTaskValor" placeholder="0,00"></span></div>'
+        +'<div class="field grow"><label>Observações</label><input type="text" id="newTaskObs" placeholder="Observações"></div>'
         +'<button class="btn btn-ghost btn-sm" data-action="add-task">'+ICONS.plus+"Adicionar tarefa</button>"
         +"</div>")
       +"</div></div>"
@@ -1082,7 +1092,7 @@ function App(){
     var el=e.target.closest("[data-action]");
     if(!el)return;
     var action=el.dataset.action;
-    var PARTNER_BLOCKED={"new-event":1,"create-event":1,"delete-event":1,"open-access-modal":1,"create-partner-access":1,"revoke-partner-access":1,"add-partner-event":1,"remove-partner-event":1};
+    var PARTNER_BLOCKED={"new-event":1,"create-event":1,"delete-event":1,"open-access-modal":1,"create-partner-access":1,"revoke-partner-access":1,"add-partner-event":1,"remove-partner-event":1,"remove-task":1,"remove-lote":1,"remove-custo":1};
     if(window.__fugaRole==="partner"&&PARTNER_BLOCKED[action])return;
     if(action==="refresh-now"){
       saveUi();location.reload();
@@ -1215,8 +1225,12 @@ function App(){
       if(!titulo){toast("Escreva o título da tarefa.");return;}
       var categoria=document.getElementById("newTaskCategoria").value;
       var lado=document.getElementById("newTaskLado").value;
+      var respEl=document.getElementById("newTaskResponsavel");
+      var prazoEl=document.getElementById("newTaskPrazo");
+      var valorEl=document.getElementById("newTaskValor");
+      var obsEl=document.getElementById("newTaskObs");
       var ns4=deepClone(state),ev4=findEvent(ns4,ui.selectedEventId);
-      ev4.tasks.push({id:uid(),categoria:categoria,titulo:titulo,lado:lado,status:"pendente",responsavel:"",prazo:"",valor:null,obs:""});
+      ev4.tasks.push({id:uid(),categoria:categoria,titulo:titulo,lado:lado,status:"pendente",responsavel:(respEl&&respEl.value||"").trim(),prazo:(prazoEl&&prazoEl.value)||"",valor:(valorEl&&valorEl.value!=="")?parseFloat(valorEl.value):null,obs:(obsEl&&obsEl.value||"").trim(),criadoPor:window.__fugaRole==="partner"?"partner":"admin"});
       persist(ns4);
     }else if(action==="remove-lote"){
       var ns5=deepClone(state),ev5=findEvent(ns5,ui.selectedEventId);
@@ -1230,7 +1244,7 @@ function App(){
       var vend=document.getElementById("newLoteVendidos").value;
       var ns6=deepClone(state),ev6=findEvent(ns6,ui.selectedEventId);
       ev6.lotes=ev6.lotes||[];
-      ev6.lotes.push({id:uid(),nome:nome2,preco:preco===""?null:parseFloat(preco),vendidos:vend===""?0:parseInt(vend,10),status:"planejado"});
+      ev6.lotes.push({id:uid(),nome:nome2,preco:preco===""?null:parseFloat(preco),vendidos:vend===""?0:parseInt(vend,10),status:"planejado",criadoPor:window.__fugaRole==="partner"?"partner":"admin"});
       persist(ns6);
     }else if(action==="add-custo"){
       var descEl=document.getElementById("newCustoDescricao");
@@ -1240,7 +1254,7 @@ function App(){
       var valC=document.getElementById("newCustoValor").value;
       var ns7=deepClone(state),ev7=findEvent(ns7,ui.selectedEventId);
       ev7.custos=ev7.custos||[];
-      ev7.custos.push({id:uid(),descricao:desc,categoria:catC,valor:valC===""?null:parseFloat(valC)});
+      ev7.custos.push({id:uid(),descricao:desc,categoria:catC,valor:valC===""?null:parseFloat(valC),criadoPor:window.__fugaRole==="partner"?"partner":"admin"});
       persist(ns7);
     }else if(action==="remove-custo"){
       var ns8=deepClone(state),ev8=findEvent(ns8,ui.selectedEventId);

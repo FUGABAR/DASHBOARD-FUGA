@@ -393,6 +393,22 @@ dialog::backdrop{background:rgba(10,10,14,.5)}
   padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);
 }
 .logout-btn:hover{color:var(--text)}
+.print-only{display:none}
+.print-doc{font-family:inherit;color:#000;background:#fff}
+.print-doc h1{font-size:20px;margin:0 0 4px}
+.print-doc h2{font-size:14px;margin:18px 0 6px;border-bottom:1px solid #000;padding-bottom:3px}
+.print-doc .print-meta{font-size:12px;margin-bottom:10px;color:#333}
+.print-doc table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px}
+.print-doc th,.print-doc td{border:1px solid #999;padding:4px 6px;text-align:left}
+.print-doc .print-empty{font-size:12px;color:#555;font-style:italic}
+.print-doc .print-result{font-size:13px;margin-top:4px}
+.print-doc .print-result strong{font-size:15px}
+.print-doc .print-note{font-size:11px;color:#555;font-style:italic}
+@media print{
+  body *{visibility:hidden}
+  #printSummary,#printSummary *{visibility:visible}
+  #printSummary{display:block;position:absolute;left:0;top:0;width:100%;margin:0;padding:16px}
+}
 </style>
 </head>
 <body>
@@ -414,6 +430,7 @@ dialog::backdrop{background:rgba(10,10,14,.5)}
 </div>
 <div id="logoutBar" hidden><button type="button" id="logoutBtn" class="logout-btn">Sair</button></div>
 <div id="app"></div>
+<div id="printSummary" class="print-only"></div>
 <script id="seed-data" type="application/json">{"events":[{"id":"idmthjjjsaaiuee","nome":"ROCK HERMANO","data":"2026-09-05","local":"FUGA 4D","tipo":"proprio","parceiro":"","status":"planejamento","notas":"","espacos":["FUGUINHA"],"tasks":[{"id":"idmthk5eu47ybxs","categoria":"Hospedagem","titulo":"Reservar hotel Santiago Tavella","lado":"fuga","status":"pendente","responsavel":"TIAGO","prazo":"2026-09-01","valor":700,"obs":"Tentar permuta."}],"lotes":[{"id":"idmthjr0r4pio0n","nome":"LOTE PROMO","preco":20,"dataInicio":"2026-08-30","quantidade":16,"vendidos":17,"status":"planejado"},{"id":"idmthjrvfhbpwoz","nome":"LOTE 1","preco":30,"dataInicio":"2026-08-30","quantidade":100,"vendidos":100,"status":"planejado"},{"id":"idmthjseysryo0p","nome":"LOTE 2","preco":40,"dataInicio":"2026-08-31","quantidade":150,"vendidos":35,"status":"planejado"}],"custos":[{"id":"idmthjt7wi425g3","descricao":"BANDA Y USTEDES","categoria":"Atrações","valor":3500},{"id":"idmthjtk2trwavd","descricao":"SANTIAGO TAVELLA","categoria":"Atrações","valor":2000},{"id":"idmthjughccqac4","descricao":"FRANK JORGE","categoria":"Atrações","valor":1000},{"id":"idmthjw6citkqv2","descricao":"ENSAIO","categoria":"Produção","valor":290}],"gastoMedioBar":60,"margemCopa":30,"quebraPct":10,"cortesiaPct":10,"vendasDiaEsperadas":45},{"id":"idmthkz9unjhw3m","nome":"ATL BANDS o festival","data":"2026-09-19","local":"FUGA 4D","tipo":"collab","parceiro":"Fetter","status":"planejamento","notas":"","espacos":[],"tasks":[{"id":"idmthkz9undr5mn","categoria":"Viagem","titulo":"Compra das passagens aéreas","lado":"fuga","status":"pendente","responsavel":"marCELO","prazo":"2026-09-04","valor":null,"obs":""},{"id":"idmthkz9unleh92","categoria":"Viagem","titulo":"Pagamento das passagens aéreas","lado":"fuga","status":"pendente","responsavel":"Guilherme","prazo":"","valor":null,"obs":""},{"id":"idmthkz9untrf3g","categoria":"Hospedagem","titulo":"Reserva do hotel","lado":"fuga","status":"pendente","responsavel":"","prazo":"","valor":null,"obs":""},{"id":"idmthkz9un6p9yq","categoria":"Produção","titulo":"Layout do evento definido","lado":"fuga","status":"pendente","responsavel":"","prazo":"","valor":null,"obs":""},{"id":"idmthkz9un025q7","categoria":"Som","titulo":"Fechar fornecedor de som","lado":"fuga","status":"pendente","responsavel":"","prazo":"","valor":null,"obs":""},{"id":"idmthkz9unkf349","categoria":"Som","titulo":"Enviar rider técnico de som","lado":"parceiro","status":"pendente","responsavel":"","prazo":"","valor":null,"obs":""},{"id":"idmthkz9unb7gb8","categoria":"Camarim","titulo":"Enviar rider de camarim","lado":"parceiro","status":"pendente","responsavel":"","prazo":"","valor":null,"obs":""},{"id":"idmthkz9unjve49","categoria":"Logística","titulo":"Organizar transfers","lado":"fuga","status":"pendente","responsavel":"","prazo":"","valor":null,"obs":""},{"id":"idmthkz9unqcte7","categoria":"Ingressos","titulo":"Precificação e lotes de ingresso","lado":"fuga","status":"pendente","responsavel":"","prazo":"","valor":null,"obs":""}],"lotes":[{"id":"idmthxmf5iaawx0","nome":"LOTE 1","preco":100,"dataInicio":"2026-08-11","quantidade":100,"vendidos":100,"status":"ativo"}],"custos":[],"gastoMedioBar":60,"margemCopa":30,"quebraPct":10,"cortesiaPct":10,"vendasDiaEsperadas":60,"percParceiroPorta":90}]}</script>
 <script>
 function App(){
@@ -447,7 +464,8 @@ function App(){
     trash:'<svg class="icon" viewBox="0 0 16 16" fill="none"><path d="M3.5 4.5h9M6.5 4.5V3a1 1 0 011-1h1a1 1 0 011 1v1.5M6 7v4.5M10 7v4.5M4.5 4.5l.6 8a1 1 0 001 .95h3.8a1 1 0 001-.95l.6-8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     alert:'<svg class="icon" viewBox="0 0 16 16" fill="none"><path d="M8 2.2l6.5 11.3a.9.9 0 01-.78 1.35H2.28a.9.9 0 01-.78-1.35L8 2.2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 6.3v3.2M8 11.7v.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
     refresh:'<svg class="icon" viewBox="0 0 16 16" fill="none"><path d="M13.5 8a5.5 5.5 0 10-1.66 3.95M13.5 8V4.2M13.5 8H9.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    calendar:'<svg class="icon" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="3.5" width="11" height="10.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>'
+    calendar:'<svg class="icon" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="3.5" width="11" height="10.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+    printer:'<svg class="icon" viewBox="0 0 16 16" fill="none"><path d="M4.5 6V2.5h7V6M4.5 12.5h-2A1 1 0 011.5 11.5V7.5A1 1 0 012.5 6.5h11a1 1 0 011 1v4a1 1 0 01-1 1h-2M4.5 9.5h7v4h-7v-4z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
   };
 
   var state=loadState();
@@ -630,10 +648,14 @@ function App(){
     return future[0]||null;
   }
   function financeSummary(ev){
-    var lotes=ev.lotes||[],custos=ev.custos||[];
+    var lotes=ev.lotes||[],custos=ev.custos||[],patrocinios=ev.patrocinios||[],adiantamentos=ev.adiantamentos||[];
     var vendidos=lotes.reduce(function(s,l){return s+(Number(l.vendidos)||0);},0);
     var receitaIngressos=lotes.reduce(function(s,l){return s+(Number(l.vendidos)||0)*(Number(l.preco)||0);},0);
     var totalCustos=custos.reduce(function(s,c){return s+(Number(c.valor)||0);},0);
+    var totalPatrocinio=patrocinios.reduce(function(s,p){return s+(Number(p.valor)||0);},0);
+    var totalAdiantamentoFuga=adiantamentos.filter(function(a){return a.quem!=="parceiro";}).reduce(function(s,a){return s+(Number(a.valor)||0);},0);
+    var totalAdiantamentoParceiro=adiantamentos.filter(function(a){return a.quem==="parceiro";}).reduce(function(s,a){return s+(Number(a.valor)||0);},0);
+    var totalAdiantamento=totalAdiantamentoFuga+totalAdiantamentoParceiro;
     var gastoBar=Number(ev.gastoMedioBar)||0;
     var margemPct=ev.margemCopa==null?30:Number(ev.margemCopa);
     var quebraPct=ev.quebraPct==null?10:Number(ev.quebraPct);
@@ -650,7 +672,7 @@ function App(){
       var presencaTotal=presencaPagante+cortesiaPessoas;
       var receitaBar=presencaTotal*gastoBar;
       var lucroCopa=receitaBar*(margemPct/100);
-      var receitaTotal=receitaTickets+lucroCopa;
+      var receitaTotal=receitaTickets+lucroCopa+totalPatrocinio;
       var saldo=receitaTotal-totalCustos;
       var ingressosNecessarios=(saldo<0&&precoRef>0)?Math.ceil((-saldo)/precoRef):0;
       var repassePorta=isCollab?receitaTickets*(percParceiroPorta/100):0;
@@ -677,7 +699,9 @@ function App(){
       vendidos:vendidos,totalCustos:totalCustos,gastoBar:gastoBar,margemPct:margemPct,
       quebraPct:quebraPct,cortesiaPct:cortesiaPct,vendasDia:vendasDia,
       refLote:refLote,precoRef:precoRef,atual:atual,projetado:projetado,
-      isCollab:isCollab,percParceiroPorta:percParceiroPorta,percParceiroCopa:percParceiroCopa
+      isCollab:isCollab,percParceiroPorta:percParceiroPorta,percParceiroCopa:percParceiroCopa,
+      totalPatrocinio:totalPatrocinio,totalAdiantamento:totalAdiantamento,
+      totalAdiantamentoFuga:totalAdiantamentoFuga,totalAdiantamentoParceiro:totalAdiantamentoParceiro
     };
   }
 
@@ -877,9 +901,30 @@ function App(){
         +"</tr>";
     }).join("");
 
+    var patrocinioRows=(ev.patrocinios||[]).map(function(p){
+      var rowDis=(readOnly||window.__fugaRole==="partner")?" disabled":"";
+      var rowLocked=readOnly||window.__fugaRole==="partner";
+      return '<tr>'
+        +'<td><input type="text" value="'+esc(p.descricao||"")+'" data-entity="patrocinio" data-id="'+p.id+'" data-field="descricao"'+rowDis+'>'+(p.criadoPor==="partner"?'<div class="event-sub">adicionado pelo parceiro</div>':"")+'</td>'
+        +'<td><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" value="'+(p.valor==null?"":p.valor)+'" placeholder="0,00" data-entity="patrocinio" data-id="'+p.id+'" data-field="valor"'+rowDis+'></span></td>'
+        +'<td>'+(rowLocked?"":'<button class="btn btn-danger btn-sm" data-action="remove-patrocinio" data-id="'+p.id+'" title="Remover cota de patrocínio">'+ICONS.trash+"</button>")+'</td>'
+        +"</tr>";
+    }).join("");
+
+    var adiantamentoRows=(ev.adiantamentos||[]).map(function(a){
+      var rowDis=(readOnly||window.__fugaRole==="partner")?" disabled":"";
+      var rowLocked=readOnly||window.__fugaRole==="partner";
+      return '<tr>'
+        +'<td><input type="text" value="'+esc(a.descricao||"")+'" data-entity="adiantamento" data-id="'+a.id+'" data-field="descricao"'+rowDis+'>'+(a.criadoPor==="partner"?'<div class="event-sub">adicionado pelo parceiro</div>':"")+'</td>'
+        +'<td><select data-entity="adiantamento" data-id="'+a.id+'" data-field="quem"'+rowDis+'><option value="fuga"'+(a.quem!=="parceiro"?" selected":"")+'>Fuga</option><option value="parceiro"'+(a.quem==="parceiro"?" selected":"")+'>Parceiro</option></select></td>'
+        +'<td><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" value="'+(a.valor==null?"":a.valor)+'" placeholder="0,00" data-entity="adiantamento" data-id="'+a.id+'" data-field="valor"'+rowDis+'></span></td>'
+        +'<td>'+(rowLocked?"":'<button class="btn btn-danger btn-sm" data-action="remove-adiantamento" data-id="'+a.id+'" title="Remover adiantamento">'+ICONS.trash+"</button>")+'</td>'
+        +"</tr>";
+    }).join("");
+
     return ""
       +(readOnly?'<div class="banner">'+ICONS.alert+"Suas alterações NÃO estão sendo salvas nesta janela — peça a quem compartilhou o link para conferir sua permissão de edição.</div>":"")
-      +'<div class="detail-topbar">'+(window.__fugaRole==="partner"&&partnerEventIds(window.__fugaProfile).length<=1?'<span class="back-link" style="cursor:default;text-decoration:none">'+esc(ev.nome||"Evento")+'</span>':'<button class="back-link" data-action="back">'+iconLeft()+(window.__fugaRole==="partner"?"Meus eventos":"Todos os eventos")+'</button>')+refreshBarHtml()+"</div>"
+      +'<div class="detail-topbar">'+(window.__fugaRole==="partner"&&partnerEventIds(window.__fugaProfile).length<=1?'<span class="back-link" style="cursor:default;text-decoration:none">'+esc(ev.nome||"Evento")+'</span>':'<button class="back-link" data-action="back">'+iconLeft()+(window.__fugaRole==="partner"?"Meus eventos":"Todos os eventos")+'</button>')+'<button class="btn btn-ghost" data-action="print-summary" data-id="'+ev.id+'">'+ICONS.printer+"Resumo do evento (PDF)</button>"+refreshBarHtml()+"</div>"
       +'<div class="detail-head"><div class="detail-title-row">'
       +'<input class="title-input" value="'+esc(ev.nome||"")+'" placeholder="Nome do evento" data-entity="event" data-id="'+ev.id+'" data-field="nome"'+dis+'>'
       +'<span class="pill pill-'+ev.status+'">'+statusLabel(STATUS_EVENTO,ev.status)+'</span>'
@@ -887,7 +932,7 @@ function App(){
       +"</div>"
       +(readOnly||window.__fugaRole==="partner"?"":'<button class="btn btn-danger" data-action="delete-event" data-id="'+ev.id+'">'+ICONS.trash+"Excluir evento</button>")
       +"</div>"
-      +'<nav class="quicknav"><a href="#sec-geral">Visão geral</a><a href="#sec-checklist">Checklist</a><a href="#sec-ingressos">Ingressos</a><a href="#sec-custos">Custos</a><a href="#sec-financeiro">Financeiro</a></nav>'
+      +'<nav class="quicknav"><a href="#sec-geral">Visão geral</a><a href="#sec-checklist">Checklist</a><a href="#sec-ingressos">Ingressos</a><a href="#sec-custos">Custos</a><a href="#sec-patrocinio">Patrocínio</a><a href="#sec-adiantamento">Adiantamento</a><a href="#sec-financeiro">Financeiro</a></nav>'
       +'<div id="sec-geral">'+fieldGrid+"</div>"
       +'<div class="section" id="sec-checklist"><div class="section-head"><h2>Checklist do evento</h2><span class="hint">'+prog.done+" de "+prog.total+' tarefas concluídas</span></div>'
       +'<div class="progress-summary"><div class="progress-track"><div class="progress-fill" style="width:'+prog.pct+'%"></div></div></div>'
@@ -924,6 +969,27 @@ function App(){
         +'<div class="field"><label>Categoria</label><select id="newCustoCategoria">'+CATEGORIAS_CUSTO.map(function(c){return "<option>"+c+"</option>";}).join("")+"</select></div>"
         +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newCustoValor" placeholder="0,00"></span></div>'
         +'<button class="btn btn-ghost btn-sm" data-action="add-custo">'+ICONS.plus+"Adicionar custo</button>"
+        +"</div>")
+      +"</div></div>"
+      +'<div class="section" id="sec-patrocinio"><div class="section-head"><h2>Cota de patrocínio</h2><span class="hint">Grana que conseguimos, ou que o parceiro conseguiu de fora — soma na receita do evento</span></div>'
+      +'<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Valor (R$)</th><th></th></tr></thead><tbody>'
+      +(patrocinioRows||'<tr><td colspan="3" style="color:var(--text-muted);text-align:center;padding:20px">Nenhuma cota de patrocínio cadastrada ainda</td></tr>')
+      +"</tbody></table>"
+      +(readOnly?"":'<div class="add-row">'
+        +'<div class="field grow"><label>Descrição</label><input type="text" id="newPatrocinioDescricao" placeholder="Ex.: Patrocínio Marca X"></div>'
+        +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newPatrocinioValor" placeholder="0,00"></span></div>'
+        +'<button class="btn btn-ghost btn-sm" data-action="add-patrocinio">'+ICONS.plus+"Adicionar patrocínio</button>"
+        +"</div>")
+      +"</div></div>"
+      +'<div class="section" id="sec-adiantamento"><div class="section-head"><h2>Adiantamento</h2><span class="hint">Valor que a Fuga ou o parceiro adiantou — só informativo, não entra no saldo do evento</span></div>'
+      +'<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Quem adiantou</th><th>Valor (R$)</th><th></th></tr></thead><tbody>'
+      +(adiantamentoRows||'<tr><td colspan="4" style="color:var(--text-muted);text-align:center;padding:20px">Nenhum adiantamento cadastrado ainda</td></tr>')
+      +"</tbody></table>"
+      +(readOnly?"":'<div class="add-row">'
+        +'<div class="field grow"><label>Descrição</label><input type="text" id="newAdiantamentoDescricao" placeholder="Ex.: Sinal pago à banda"></div>'
+        +'<div class="field"><label>Quem adiantou</label><select id="newAdiantamentoQuem"><option value="fuga">Fuga</option><option value="parceiro">Parceiro</option></select></div>'
+        +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newAdiantamentoValor" placeholder="0,00"></span></div>'
+        +'<button class="btn btn-ghost btn-sm" data-action="add-adiantamento">'+ICONS.plus+"Adicionar adiantamento</button>"
         +"</div>")
       +"</div></div>"
       +renderFinanceiro(ev);
@@ -982,8 +1048,14 @@ function App(){
       +'<div class="stat"><span class="n" style="font-size:22px">'+f.vendidos+'</span><span class="l">Ingressos vendidos (pré-venda)</span></div>'
       +'<div class="stat"><span class="n" style="font-size:22px">'+fmtMoney(a.receitaIngressos)+'</span><span class="l">Receita de ingressos</span></div>'
       +'<div class="stat"><span class="n" style="font-size:22px">'+fmtMoney(a.lucroCopa)+'</span><span class="l">Lucro de copa ('+f.margemPct+'%)</span><span class="sub mono">presença ajustada: '+Math.round(a.presencaTotal)+' pessoas</span></div>'
-      +'<div class="stat"><span class="n" style="font-size:22px;color:'+(a.saldo<0?"var(--bad)":"var(--good)")+'">'+fmtMoney(a.saldo)+'</span><span class="l">Resultado do evento (ingressos + copa − custos)</span></div>'
+      +(f.totalPatrocinio>0?'<div class="stat"><span class="n" style="font-size:22px">'+fmtMoney(f.totalPatrocinio)+'</span><span class="l">Cota de patrocínio</span></div>':"")
+      +'<div class="stat"><span class="n" style="font-size:22px;color:'+(a.saldo<0?"var(--bad)":"var(--good)")+'">'+fmtMoney(a.saldo)+'</span><span class="l">Resultado do evento (ingressos + copa + patrocínio − custos)</span></div>'
       +'</div>'
+      +(f.totalAdiantamento>0?('<div class="fin-callout" style="background:var(--bg-soft,transparent);border:1px solid var(--border)">'+ICONS.alert
+        +'<span>Adiantamento (informativo, não entra no saldo acima): '+fmtMoney(f.totalAdiantamento)
+        +(f.totalAdiantamentoFuga>0?" · Fuga adiantou "+fmtMoney(f.totalAdiantamentoFuga):"")
+        +(f.totalAdiantamentoParceiro>0?" · Parceiro adiantou "+fmtMoney(f.totalAdiantamentoParceiro):"")
+        +"</span></div>"):"")
       +(f.isCollab?(
         '<div class="stats fin-grid" style="margin-top:12px">'
         +'<div class="stat"><span class="n" style="font-size:20px">'+fmtMoney(a.repassePorta)+'</span><span class="l">Repasse da porta ao parceiro ('+f.percParceiroPorta+'%)</span></div>'
@@ -995,6 +1067,50 @@ function App(){
       +bars
       +projecao
       +"</div>";
+  }
+
+  function buildPrintSummary(ev){
+    var f=financeSummary(ev),a=f.atual;
+    var prog=taskProgress(ev);
+    var dataFmt=ev.data?ev.data.split("-").reverse().join("/"):"—";
+    var taskRowsP=(ev.tasks||[]).map(function(t){
+      return '<tr><td>'+esc(t.titulo)+'</td><td>'+esc(t.responsavel||"—")+'</td><td>'+(t.prazo?t.prazo.split("-").reverse().join("/"):"—")+'</td><td>'+statusLabel(STATUS_TASK,t.status)+'</td></tr>';
+    }).join("");
+    var loteRowsP=(ev.lotes||[]).map(function(l){
+      return '<tr><td>'+esc(l.nome||"")+'</td><td>'+fmtMoney(l.preco||0)+'</td><td>'+(l.vendidos||0)+'</td></tr>';
+    }).join("");
+    var custoRowsP=(ev.custos||[]).map(function(c){
+      return '<tr><td>'+esc(c.descricao||"")+'</td><td>'+esc(c.categoria||"")+'</td><td>'+fmtMoney(c.valor||0)+'</td></tr>';
+    }).join("");
+    var patrocinioRowsP=(ev.patrocinios||[]).map(function(p){
+      return '<tr><td>'+esc(p.descricao||"")+'</td><td>'+fmtMoney(p.valor||0)+'</td></tr>';
+    }).join("");
+    var adiantamentoRowsP=(ev.adiantamentos||[]).map(function(ad){
+      return '<tr><td>'+esc(ad.descricao||"")+'</td><td>'+(ad.quem==="parceiro"?"Parceiro":"Fuga")+'</td><td>'+fmtMoney(ad.valor||0)+'</td></tr>';
+    }).join("");
+
+    return '<div class="print-doc">'
+      +'<h1>'+esc(ev.nome||"Evento")+'</h1>'
+      +'<div class="print-meta">'+dataFmt+' · '+esc(ev.local||"—")+' · '+statusLabel(STATUS_EVENTO,ev.status)+(ev.tipo==="collab"?" · Collab"+(ev.parceiro?" com "+esc(ev.parceiro):""):" · Próprio")+'</div>'
+      +'<h2>Checklist ('+prog.done+' de '+prog.total+' concluídas)</h2>'
+      +(taskRowsP?'<table><thead><tr><th>Tarefa</th><th>Responsável</th><th>Prazo</th><th>Status</th></tr></thead><tbody>'+taskRowsP+'</tbody></table>':'<div class="print-empty">Nenhuma tarefa cadastrada.</div>')
+      +'<h2>Lotes de ingresso</h2>'
+      +(loteRowsP?'<table><thead><tr><th>Tipo</th><th>Valor</th><th>Vendidos</th></tr></thead><tbody>'+loteRowsP+'</tbody></table>':'<div class="print-empty">Nenhum lote cadastrado.</div>')
+      +'<h2>Custos</h2>'
+      +(custoRowsP?'<table><thead><tr><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead><tbody>'+custoRowsP+'</tbody></table>':'<div class="print-empty">Nenhum custo cadastrado.</div>')
+      +'<h2>Cota de patrocínio</h2>'
+      +(patrocinioRowsP?'<table><thead><tr><th>Descrição</th><th>Valor</th></tr></thead><tbody>'+patrocinioRowsP+'</tbody></table>':'<div class="print-empty">Nenhuma cota de patrocínio cadastrada.</div>')
+      +'<h2>Adiantamento <span class="print-note">(informativo, não entra no resultado abaixo)</span></h2>'
+      +(adiantamentoRowsP?'<table><thead><tr><th>Descrição</th><th>Quem adiantou</th><th>Valor</th></tr></thead><tbody>'+adiantamentoRowsP+'</tbody></table>':'<div class="print-empty">Nenhum adiantamento cadastrado.</div>')
+      +'<h2>Resultado financeiro (pré-venda atual)</h2>'
+      +'<div class="print-result">Receita de ingressos: '+fmtMoney(a.receitaIngressos)+'</div>'
+      +'<div class="print-result">Lucro de copa: '+fmtMoney(a.lucroCopa)+'</div>'
+      +(f.totalPatrocinio>0?'<div class="print-result">Cota de patrocínio: '+fmtMoney(f.totalPatrocinio)+'</div>':"")
+      +'<div class="print-result">Custos totais: '+fmtMoney(f.totalCustos)+'</div>'
+      +'<div class="print-result"><strong>Resultado do evento: '+fmtMoney(a.saldo)+'</strong></div>'
+      +(f.isCollab?('<div class="print-result">Repasse total ao parceiro: '+fmtMoney(a.repasseTotal)+'</div><div class="print-result"><strong>Fica com a Fuga: '+fmtMoney(a.saldoFuga)+'</strong></div>'):"")
+      +'<div class="print-note" style="margin-top:10px">Gerado em '+(new Date()).toLocaleDateString("pt-BR")+'.</div>'
+      +'</div>';
   }
 
   /* ---------- new event modal ---------- */
@@ -1092,7 +1208,7 @@ function App(){
     var el=e.target.closest("[data-action]");
     if(!el)return;
     var action=el.dataset.action;
-    var PARTNER_BLOCKED={"new-event":1,"create-event":1,"delete-event":1,"open-access-modal":1,"create-partner-access":1,"revoke-partner-access":1,"add-partner-event":1,"remove-partner-event":1,"remove-task":1,"remove-lote":1,"remove-custo":1};
+    var PARTNER_BLOCKED={"new-event":1,"create-event":1,"delete-event":1,"open-access-modal":1,"create-partner-access":1,"revoke-partner-access":1,"add-partner-event":1,"remove-partner-event":1,"remove-task":1,"remove-lote":1,"remove-custo":1,"remove-patrocinio":1,"remove-adiantamento":1};
     if(window.__fugaRole==="partner"&&PARTNER_BLOCKED[action])return;
     if(action==="refresh-now"){
       saveUi();location.reload();
@@ -1128,6 +1244,8 @@ function App(){
         tasks:TASK_TEMPLATE.map(function(t){return {id:uid(),categoria:t.categoria,titulo:t.titulo,lado:t.lado,status:"pendente",responsavel:"",prazo:"",valor:null,obs:""};}),
         lotes:[],
         custos:[],
+        patrocinios:[],
+        adiantamentos:[],
         gastoMedioBar:null,
         margemCopa:30,
         quebraPct:10,
@@ -1260,6 +1378,39 @@ function App(){
       var ns8=deepClone(state),ev8=findEvent(ns8,ui.selectedEventId);
       ev8.custos=(ev8.custos||[]).filter(function(c){return c.id!==el.dataset.id;});
       persist(ns8);
+    }else if(action==="add-patrocinio"){
+      var pDescEl=document.getElementById("newPatrocinioDescricao");
+      var pDesc=(pDescEl.value||"").trim();
+      if(!pDesc){toast("Descreva o patrocínio antes de adicionar.");return;}
+      var pValEl=document.getElementById("newPatrocinioValor");
+      var nsP=deepClone(state),evP=findEvent(nsP,ui.selectedEventId);
+      evP.patrocinios=evP.patrocinios||[];
+      evP.patrocinios.push({id:uid(),descricao:pDesc,valor:(pValEl&&pValEl.value!=="")?parseFloat(pValEl.value):null,criadoPor:window.__fugaRole==="partner"?"partner":"admin"});
+      persist(nsP);
+    }else if(action==="remove-patrocinio"){
+      var nsPr=deepClone(state),evPr=findEvent(nsPr,ui.selectedEventId);
+      evPr.patrocinios=(evPr.patrocinios||[]).filter(function(p){return p.id!==el.dataset.id;});
+      persist(nsPr);
+    }else if(action==="add-adiantamento"){
+      var aDescEl=document.getElementById("newAdiantamentoDescricao");
+      var aDesc=(aDescEl.value||"").trim();
+      if(!aDesc){toast("Descreva o adiantamento antes de adicionar.");return;}
+      var aQuemEl=document.getElementById("newAdiantamentoQuem");
+      var aValEl=document.getElementById("newAdiantamentoValor");
+      var nsA=deepClone(state),evA=findEvent(nsA,ui.selectedEventId);
+      evA.adiantamentos=evA.adiantamentos||[];
+      evA.adiantamentos.push({id:uid(),descricao:aDesc,quem:(aQuemEl&&aQuemEl.value)||"fuga",valor:(aValEl&&aValEl.value!=="")?parseFloat(aValEl.value):null,criadoPor:window.__fugaRole==="partner"?"partner":"admin"});
+      persist(nsA);
+    }else if(action==="remove-adiantamento"){
+      var nsAr=deepClone(state),evAr=findEvent(nsAr,ui.selectedEventId);
+      evAr.adiantamentos=(evAr.adiantamentos||[]).filter(function(a){return a.id!==el.dataset.id;});
+      persist(nsAr);
+    }else if(action==="print-summary"){
+      var evPrint=findEvent(state,el.dataset.id);
+      if(!evPrint)return;
+      var psEl=document.getElementById("printSummary");
+      if(psEl){psEl.innerHTML=buildPrintSummary(evPrint);}
+      window.print();
     }else if(action==="toggle-espaco"){
       var ns9=deepClone(state),ev9=findEvent(ns9,ui.selectedEventId);
       ev9.espacos=ev9.espacos||[];
@@ -1300,6 +1451,14 @@ function App(){
       var ev4c=findEvent(ns,ui.selectedEventId);if(!ev4c)return;
       var c=(ev4c.custos||[]).filter(function(x){return x.id===id;})[0];if(!c)return;
       c[field]=value;
+    }else if(entity==="patrocinio"){
+      var ev4p=findEvent(ns,ui.selectedEventId);if(!ev4p)return;
+      var pp=(ev4p.patrocinios||[]).filter(function(x){return x.id===id;})[0];if(!pp)return;
+      pp[field]=value;
+    }else if(entity==="adiantamento"){
+      var ev4a=findEvent(ns,ui.selectedEventId);if(!ev4a)return;
+      var aa=(ev4a.adiantamentos||[]).filter(function(x){return x.id===id;})[0];if(!aa)return;
+      aa[field]=value;
     }else return;
     persist(ns);
   }

@@ -344,6 +344,9 @@ dialog::backdrop{background:rgba(10,10,14,.5)}
 }
 .fin-callout.negative{background:var(--bad-soft);color:var(--bad);border:1px solid var(--bad)}
 .fin-callout.positive{background:var(--good-soft);color:var(--good);border:1px solid var(--good)}
+.fin-scenario{margin-bottom:22px}
+.fin-scenario h3{font-size:15px;margin:0 0 2px;color:var(--text)}
+.fin-scenario-sub{display:block;font-size:12px;color:var(--text-muted);margin-bottom:12px}
 .fin-hero{
   display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
   border-radius:var(--radius);padding:20px 24px;margin-bottom:18px;border:1px solid;
@@ -659,22 +662,21 @@ function App(){
     var gastoBar=Number(ev.gastoMedioBar)||0;
     var margemPct=ev.margemCopa==null?30:Number(ev.margemCopa);
     var quebraPct=ev.quebraPct==null?10:Number(ev.quebraPct);
-    var cortesiaPct=ev.cortesiaPct==null?10:Number(ev.cortesiaPct);
+    var cortesiaPessoas=Number(ev.cortesiaPessoas)||0;
     var vendasDia=Number(ev.vendasDiaEsperadas)||0;
-    var refLote=loteAtual(ev)||lotes[lotes.length-1]||null;
-    var precoRef=refLote?Number(refLote.preco)||0:0;
+    var ultimoLote=lotes.length?lotes[lotes.length-1]:null;
+    var precoUltimoLote=ultimoLote?Number(ultimoLote.preco)||0:0;
     var isCollab=ev.tipo==="collab";
     var percParceiroPorta=ev.percParceiroPorta==null?0:Number(ev.percParceiroPorta);
     var percParceiroCopa=ev.percParceiroCopa==null?0:Number(ev.percParceiroCopa);
 
-    function cenario(ticketsPagos,receitaTickets,presencaPagante){
-      var cortesiaPessoas=presencaPagante*(cortesiaPct/100);
-      var presencaTotal=presencaPagante+cortesiaPessoas;
+    function cenario(ticketsPagos,receitaTickets,presencaPaganteAjustada,cortesia){
+      var presencaTotal=presencaPaganteAjustada+cortesia;
       var receitaBar=presencaTotal*gastoBar;
       var lucroCopa=receitaBar*(margemPct/100);
       var receitaTotal=receitaTickets+lucroCopa+totalPatrocinio;
       var saldo=receitaTotal-totalCustos;
-      var ingressosNecessarios=(saldo<0&&precoRef>0)?Math.ceil((-saldo)/precoRef):0;
+      var ingressosNecessarios=(saldo<0&&precoUltimoLote>0)?Math.ceil((-saldo)/precoUltimoLote):0;
       var repassePorta=isCollab?receitaTickets*(percParceiroPorta/100):0;
       var repasseCopa=isCollab?lucroCopa*(percParceiroCopa/100):0;
       var repasseTotal=repassePorta+repasseCopa;
@@ -687,18 +689,20 @@ function App(){
       };
     }
 
+    // Cenário atual: só o que já foi vendido (porta + copa), sem cortesia e sem vendas do dia.
     var presencaPreVendaAjustada=vendidos*(1-quebraPct/100);
-    var atual=cenario(vendidos,receitaIngressos,presencaPreVendaAjustada);
+    var atual=cenario(vendidos,receitaIngressos,presencaPreVendaAjustada,0);
 
-    var projTickets=vendidos+vendasDia;
-    var projReceitaIngressos=receitaIngressos+vendasDia*precoRef;
-    var projPresencaPagante=presencaPreVendaAjustada+vendasDia;
-    var projetado=cenario(projTickets,projReceitaIngressos,projPresencaPagante);
+    // Cenário possível: porta atual + cortesia (pessoas) + vendas esperadas no dia,
+    // usando o valor do último lote cadastrado para precificar essas vendas extras.
+    var possivelTickets=vendidos+vendasDia;
+    var possivelReceitaIngressos=receitaIngressos+vendasDia*precoUltimoLote;
+    var possivel=cenario(possivelTickets,possivelReceitaIngressos,presencaPreVendaAjustada+vendasDia,cortesiaPessoas);
 
     return {
       vendidos:vendidos,totalCustos:totalCustos,gastoBar:gastoBar,margemPct:margemPct,
-      quebraPct:quebraPct,cortesiaPct:cortesiaPct,vendasDia:vendasDia,
-      refLote:refLote,precoRef:precoRef,atual:atual,projetado:projetado,
+      quebraPct:quebraPct,cortesiaPessoas:cortesiaPessoas,vendasDia:vendasDia,
+      ultimoLote:ultimoLote,precoUltimoLote:precoUltimoLote,atual:atual,possivel:possivel,
       isCollab:isCollab,percParceiroPorta:percParceiroPorta,percParceiroCopa:percParceiroCopa,
       totalPatrocinio:totalPatrocinio,totalAdiantamento:totalAdiantamento,
       totalAdiantamentoFuga:totalAdiantamentoFuga,totalAdiantamentoParceiro:totalAdiantamentoParceiro
@@ -847,6 +851,7 @@ function App(){
       +'<div class="field"><label>Local</label><select data-entity="event" data-id="'+ev.id+'" data-field="local"'+dis+'><option value="">Selecione…</option>'+LOCAIS.map(function(loc){return '<option value="'+loc+'"'+((ev.local||ev.cidade)===loc?" selected":"")+'>'+loc+"</option>";}).join("")+'</select></div>'
       +'<div class="field"><label>Tipo</label><select data-entity="event" data-id="'+ev.id+'" data-field="tipo"'+dis+'><option value="collab"'+(ev.tipo==="collab"?" selected":"")+'>Collab</option><option value="proprio"'+(ev.tipo==="proprio"?" selected":"")+'>Próprio</option></select></div>'
       +'<div class="field"><label>Status</label><select data-entity="event" data-id="'+ev.id+'" data-field="status"'+dis+'>'+STATUS_EVENTO.map(function(s){return '<option value="'+s[0]+'"'+(ev.status===s[0]?" selected":"")+'>'+s[1]+"</option>";}).join("")+'</select></div>'
+      +'<div class="field"><label>Estimativa de público</label><input type="number" step="1" min="0" placeholder="0" value="'+(ev.estimativaPublico==null?"":ev.estimativaPublico)+'" data-entity="event" data-id="'+ev.id+'" data-field="estimativaPublico"'+dis+'></div>'
       +(ev.tipo==="collab"?(
         '<div class="field span2"><label>Parceiro</label><input type="text" value="'+esc(ev.parceiro||"")+'" placeholder="Nome do parceiro / casa parceira" data-entity="event" data-id="'+ev.id+'" data-field="parceiro"'+dis+'></div>'
         +'<div class="field"><label>% da porta p/ parceiro</label><input type="number" step="1" min="0" max="100" style="min-width:100px" value="'+(ev.percParceiroPorta==null?"":ev.percParceiroPorta)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="percParceiroPorta"'+dis+'></div>'
@@ -999,36 +1004,51 @@ function App(){
 
   function renderFinanceiro(ev){
     var f=financeSummary(ev);
-    var a=f.atual,p=f.projetado;
+    var a=f.atual,pv=f.possivel;
     var dis=readOnly?" disabled":"";
 
     var hero='<div class="fin-hero '+(a.saldo<0?"negative":"positive")+'">'
-      +'<div><div class="fin-hero-label">'+(a.saldo<0?"Para o break-even, ainda faltam":"Break-even da pré-venda")+'</div>'
+      +'<div><div class="fin-hero-label">'+(a.saldo<0?"Para o break-even no cenário atual, ainda faltam":"Break-even do cenário atual")+'</div>'
       +'<div class="fin-hero-number">'+(a.saldo<0?a.ingressosNecessarios+(a.ingressosNecessarios===1?" ingresso":" ingressos"):"Atingido")+'</div>'
       +'<div class="fin-hero-sub">'+(a.saldo<0
-          ? "déficit de "+fmtMoney(Math.abs(a.saldo))+(f.refLote?' · lote de referência "'+esc(f.refLote.nome)+'" ('+fmtMoney(f.precoRef)+' cada)':" · cadastre um lote para calcular o preço de referência")
+          ? "déficit de "+fmtMoney(Math.abs(a.saldo))+(f.ultimoLote?' · último lote "'+esc(f.ultimoLote.nome)+'" ('+fmtMoney(f.precoUltimoLote)+' cada)':" · cadastre um lote para calcular o preço de referência")
           : "folga de "+fmtMoney(a.saldo)+" acima dos custos, considerando só a pré-venda de hoje")
         +"</div></div>"
       +'<div class="fin-hero-side mono">'+f.vendidos+' ingressos na pré-venda<br>'+fmtMoney(a.receitaIngressos)+' já em caixa</div>'
       +"</div>";
 
-    var maxBar=Math.max(a.receitaTotal,f.totalCustos,p.receitaTotal,1);
+    var maxBar=Math.max(a.receitaTotal,f.totalCustos,pv.receitaTotal,1);
     var barRow=function(label,ingressos,copa){
       var wI=Math.max(ingressos/maxBar*100,0),wC=Math.max(copa/maxBar*100,0);
       return '<div class="fin-bar-row"><span class="fin-bar-label">'+label+'</span><div class="fin-bar-track"><div class="fin-bar-seg ingressos" style="width:'+wI+'%"></div><div class="fin-bar-seg copa" style="width:'+wC+'%"></div></div><span class="fin-bar-value">'+fmtMoney(ingressos+copa)+'</span></div>';
     };
     var wCustos=Math.max(f.totalCustos/maxBar*100,0);
     var bars='<div class="fin-bars">'
-      +barRow("Receita pré-venda",a.receitaIngressos,a.lucroCopa)
-      +(f.vendasDia>0?barRow("Cenário c/ vendas do dia",p.receitaIngressos,p.lucroCopa):"")
+      +barRow("Cenário atual",a.receitaIngressos,a.lucroCopa)
+      +barRow("Cenário possível",pv.receitaIngressos,pv.lucroCopa)
       +'<div class="fin-bar-row"><span class="fin-bar-label">Custos totais</span><div class="fin-bar-track"><div class="fin-bar-seg custo" style="width:'+wCustos+'%"></div></div><span class="fin-bar-value">'+fmtMoney(f.totalCustos)+'</span></div>'
       +'<div class="fin-legend"><span><span class="dot" style="background:var(--accent)"></span>Ingressos</span><span><span class="dot" style="background:var(--info)"></span>Copa (bar)</span><span><span class="dot" style="background:var(--text-muted)"></span>Custos</span></div>'
       +"</div>";
 
-    var projecao=f.vendasDia<=0?"":('<div class="fin-callout '+(p.saldo<0?"negative":"positive")+'">'+ICONS.alert
-      +'<span>Cenário com +'+f.vendasDia+' vendas no dia (presença estimada de '+Math.round(p.presencaTotal)+' pessoas, já com '+f.quebraPct+'% de quebra e '+f.cortesiaPct+'% de cortesia): '
-      +(p.saldo<0?"ainda faltariam "+p.ingressosNecessarios+" ingresso"+(p.ingressosNecessarios===1?"":"s")+" para o break-even.":"o evento fecharia com folga de "+fmtMoney(p.saldo)+".")
-      +"</span></div>");
+    var scenarioBlock=function(title,sub,s){
+      return '<div class="fin-scenario"><h3>'+title+'</h3><span class="fin-scenario-sub">'+sub+'</span>'
+        +'<div class="stats fin-grid">'
+        +'<div class="stat"><span class="n" style="font-size:22px">'+s.ingressos+'</span><span class="l">Ingressos</span></div>'
+        +'<div class="stat"><span class="n" style="font-size:22px">'+fmtMoney(s.receitaIngressos)+'</span><span class="l">Receita da porta</span></div>'
+        +'<div class="stat"><span class="n" style="font-size:22px">'+fmtMoney(s.lucroCopa)+'</span><span class="l">Lucro de copa ('+f.margemPct+'%)</span><span class="sub mono">presença: '+Math.round(s.presencaTotal)+' pessoas</span></div>'
+        +(f.totalPatrocinio>0?'<div class="stat"><span class="n" style="font-size:22px">'+fmtMoney(f.totalPatrocinio)+'</span><span class="l">Cota de patrocínio</span></div>':"")
+        +'<div class="stat"><span class="n" style="font-size:22px;color:'+(s.saldo<0?"var(--bad)":"var(--good)")+'">'+fmtMoney(s.saldo)+'</span><span class="l">Resultado (porta + copa'+(f.totalPatrocinio>0?" + patrocínio":"")+' − custos)</span></div>'
+        +'</div>'
+        +(f.isCollab?(
+          '<div class="stats fin-grid" style="margin-top:12px">'
+          +'<div class="stat"><span class="n" style="font-size:20px">'+fmtMoney(s.repassePorta)+'</span><span class="l">Repasse da porta ao parceiro ('+f.percParceiroPorta+'%)</span></div>'
+          +'<div class="stat"><span class="n" style="font-size:20px">'+fmtMoney(s.repasseCopa)+'</span><span class="l">Repasse da copa ao parceiro ('+f.percParceiroCopa+'%)</span></div>'
+          +'<div class="stat"><span class="n" style="font-size:20px">'+fmtMoney(s.repasseTotal)+'</span><span class="l">Total a repassar ao parceiro'+(ev.parceiro?" ("+esc(ev.parceiro)+")":"")+'</span></div>'
+          +'<div class="stat"><span class="n" style="font-size:22px;color:'+(s.saldoFuga<0?"var(--bad)":"var(--good)")+'">'+fmtMoney(s.saldoFuga)+'</span><span class="l">Fica com a Fuga (resultado − repasse)</span></div>'
+          +'</div>'
+        ):"")
+        +"</div>";
+    };
 
     return '<div class="section" id="sec-financeiro"><div class="section-head"><h2>Expectativa financeira</h2><span class="hint">Distância até o break-even — não é uma previsão de lucro</span></div>'
       +hero
@@ -1036,41 +1056,26 @@ function App(){
       +'<div class="field"><label>Gasto médio de bar por pessoa (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" style="width:110px" value="'+(ev.gastoMedioBar==null?"":ev.gastoMedioBar)+'" placeholder="0,00" data-entity="event" data-id="'+ev.id+'" data-field="gastoMedioBar"'+dis+'></span></div>'
       +'<div class="field"><label>Margem de lucro da copa (%)</label><input type="number" step="1" style="min-width:90px" value="'+(ev.margemCopa==null?30:ev.margemCopa)+'" data-entity="event" data-id="'+ev.id+'" data-field="margemCopa"'+dis+'></div>'
       +'<div class="field"><label>Quebra de comparecimento (%)</label><input type="number" step="1" style="min-width:90px" value="'+(ev.quebraPct==null?10:ev.quebraPct)+'" data-entity="event" data-id="'+ev.id+'" data-field="quebraPct"'+dis+'></div>'
-      +'<div class="field"><label>Cortesias (%)</label><input type="number" step="1" style="min-width:90px" value="'+(ev.cortesiaPct==null?10:ev.cortesiaPct)+'" data-entity="event" data-id="'+ev.id+'" data-field="cortesiaPct"'+dis+'></div>'
+      +'<div class="field"><label>Cortesias (pessoas)</label><input type="number" step="1" min="0" style="min-width:90px" placeholder="0" value="'+(ev.cortesiaPessoas==null?"":ev.cortesiaPessoas)+'" data-entity="event" data-id="'+ev.id+'" data-field="cortesiaPessoas"'+dis+'></div>'
       +'<div class="field"><label>Vendas extras esperadas no dia</label><input type="number" step="1" style="min-width:110px" value="'+(ev.vendasDiaEsperadas==null?"":ev.vendasDiaEsperadas)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="vendasDiaEsperadas"'+dis+'></div>'
       +(f.isCollab?(
         '<div class="field"><label>% da porta p/ parceiro</label><input type="number" step="1" min="0" max="100" style="min-width:100px" value="'+(ev.percParceiroPorta==null?"":ev.percParceiroPorta)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="percParceiroPorta"'+dis+'></div>'
         +'<div class="field"><label>% da copa p/ parceiro</label><input type="number" step="1" min="0" max="100" style="min-width:100px" value="'+(ev.percParceiroCopa==null?"":ev.percParceiroCopa)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="percParceiroCopa"'+dis+'></div>'
       ):"")
       +'</div>'
-      +'<p class="hint" style="margin:-8px 0 16px">Vendas no dia é uma estimativa sua (clima, feriados, eventos concorrentes) — some ao total de pré-venda para simular um cenário mais otimista, sem prometer lucro.</p>'
-      +'<div class="stats fin-grid">'
-      +'<div class="stat"><span class="n" style="font-size:22px">'+f.vendidos+'</span><span class="l">Ingressos vendidos (pré-venda)</span></div>'
-      +'<div class="stat"><span class="n" style="font-size:22px">'+fmtMoney(a.receitaIngressos)+'</span><span class="l">Receita de ingressos</span></div>'
-      +'<div class="stat"><span class="n" style="font-size:22px">'+fmtMoney(a.lucroCopa)+'</span><span class="l">Lucro de copa ('+f.margemPct+'%)</span><span class="sub mono">presença ajustada: '+Math.round(a.presencaTotal)+' pessoas</span></div>'
-      +(f.totalPatrocinio>0?'<div class="stat"><span class="n" style="font-size:22px">'+fmtMoney(f.totalPatrocinio)+'</span><span class="l">Cota de patrocínio</span></div>':"")
-      +'<div class="stat"><span class="n" style="font-size:22px;color:'+(a.saldo<0?"var(--bad)":"var(--good)")+'">'+fmtMoney(a.saldo)+'</span><span class="l">Resultado do evento (ingressos + copa + patrocínio − custos)</span></div>'
-      +'</div>'
-      +(f.totalAdiantamento>0?('<div class="fin-callout" style="background:var(--bg-soft,transparent);border:1px solid var(--border)">'+ICONS.alert
-        +'<span>Adiantamento (informativo, não entra no saldo acima): '+fmtMoney(f.totalAdiantamento)
+      +(f.totalAdiantamento>0?('<div class="fin-callout" style="background:transparent;border:1px solid var(--border);margin-bottom:16px">'+ICONS.alert
+        +'<span>Adiantamento (informativo, não entra em nenhum resultado abaixo): '+fmtMoney(f.totalAdiantamento)
         +(f.totalAdiantamentoFuga>0?" · Fuga adiantou "+fmtMoney(f.totalAdiantamentoFuga):"")
         +(f.totalAdiantamentoParceiro>0?" · Parceiro adiantou "+fmtMoney(f.totalAdiantamentoParceiro):"")
         +"</span></div>"):"")
-      +(f.isCollab?(
-        '<div class="stats fin-grid" style="margin-top:12px">'
-        +'<div class="stat"><span class="n" style="font-size:20px">'+fmtMoney(a.repassePorta)+'</span><span class="l">Repasse da porta ao parceiro ('+f.percParceiroPorta+'%)</span></div>'
-        +'<div class="stat"><span class="n" style="font-size:20px">'+fmtMoney(a.repasseCopa)+'</span><span class="l">Repasse da copa ao parceiro ('+f.percParceiroCopa+'%)</span></div>'
-        +'<div class="stat"><span class="n" style="font-size:20px">'+fmtMoney(a.repasseTotal)+'</span><span class="l">Total a repassar ao parceiro'+(ev.parceiro?" ("+esc(ev.parceiro)+")":"")+'</span></div>'
-        +'<div class="stat"><span class="n" style="font-size:22px;color:'+(a.saldoFuga<0?"var(--bad)":"var(--good)")+'">'+fmtMoney(a.saldoFuga)+'</span><span class="l">Fica com a Fuga (resultado − repasse)</span></div>'
-        +'</div>'
-      ):"")
+      +scenarioBlock("Cenário atual","Porta + copa, só com o que já foi vendido até agora",a)
+      +scenarioBlock("Cenário possível","Porta atual + cortesia ("+f.cortesiaPessoas+" pessoas) + "+f.vendasDia+" vendas esperadas no dia"+(f.ultimoLote?' (pelo valor do último lote, "'+esc(f.ultimoLote.nome)+'")':""),pv)
       +bars
-      +projecao
       +"</div>";
   }
 
   function buildPrintSummary(ev){
-    var f=financeSummary(ev),a=f.atual;
+    var f=financeSummary(ev),a=f.atual,pv=f.possivel;
     var prog=taskProgress(ev);
     var dataFmt=ev.data?ev.data.split("-").reverse().join("/"):"—";
     var taskRowsP=(ev.tasks||[]).map(function(t){
@@ -1091,7 +1096,7 @@ function App(){
 
     return '<div class="print-doc">'
       +'<h1>'+esc(ev.nome||"Evento")+'</h1>'
-      +'<div class="print-meta">'+dataFmt+' · '+esc(ev.local||"—")+' · '+statusLabel(STATUS_EVENTO,ev.status)+(ev.tipo==="collab"?" · Collab"+(ev.parceiro?" com "+esc(ev.parceiro):""):" · Próprio")+'</div>'
+      +'<div class="print-meta">'+dataFmt+' · '+esc(ev.local||"—")+' · '+statusLabel(STATUS_EVENTO,ev.status)+(ev.tipo==="collab"?" · Collab"+(ev.parceiro?" com "+esc(ev.parceiro):""):" · Próprio")+(ev.estimativaPublico?" · Estimativa de público: "+ev.estimativaPublico+" pessoas":"")+'</div>'
       +'<h2>Checklist ('+prog.done+' de '+prog.total+' concluídas)</h2>'
       +(taskRowsP?'<table><thead><tr><th>Tarefa</th><th>Responsável</th><th>Prazo</th><th>Status</th></tr></thead><tbody>'+taskRowsP+'</tbody></table>':'<div class="print-empty">Nenhuma tarefa cadastrada.</div>')
       +'<h2>Lotes de ingresso</h2>'
@@ -1102,13 +1107,22 @@ function App(){
       +(patrocinioRowsP?'<table><thead><tr><th>Descrição</th><th>Valor</th></tr></thead><tbody>'+patrocinioRowsP+'</tbody></table>':'<div class="print-empty">Nenhuma cota de patrocínio cadastrada.</div>')
       +'<h2>Adiantamento <span class="print-note">(informativo, não entra no resultado abaixo)</span></h2>'
       +(adiantamentoRowsP?'<table><thead><tr><th>Descrição</th><th>Quem adiantou</th><th>Valor</th></tr></thead><tbody>'+adiantamentoRowsP+'</tbody></table>':'<div class="print-empty">Nenhum adiantamento cadastrado.</div>')
-      +'<h2>Resultado financeiro (pré-venda atual)</h2>'
-      +'<div class="print-result">Receita de ingressos: '+fmtMoney(a.receitaIngressos)+'</div>'
+      +'<h2>Cenário atual <span class="print-note">(porta + copa, só o que já foi vendido)</span></h2>'
+      +'<div class="print-result">Ingressos: '+a.ingressos+'</div>'
+      +'<div class="print-result">Receita da porta: '+fmtMoney(a.receitaIngressos)+'</div>'
       +'<div class="print-result">Lucro de copa: '+fmtMoney(a.lucroCopa)+'</div>'
       +(f.totalPatrocinio>0?'<div class="print-result">Cota de patrocínio: '+fmtMoney(f.totalPatrocinio)+'</div>':"")
       +'<div class="print-result">Custos totais: '+fmtMoney(f.totalCustos)+'</div>'
-      +'<div class="print-result"><strong>Resultado do evento: '+fmtMoney(a.saldo)+'</strong></div>'
+      +'<div class="print-result"><strong>Resultado: '+fmtMoney(a.saldo)+'</strong></div>'
       +(f.isCollab?('<div class="print-result">Repasse total ao parceiro: '+fmtMoney(a.repasseTotal)+'</div><div class="print-result"><strong>Fica com a Fuga: '+fmtMoney(a.saldoFuga)+'</strong></div>'):"")
+      +'<h2>Cenário possível <span class="print-note">(porta atual + cortesia + vendas esperadas no dia)</span></h2>'
+      +'<div class="print-result">Ingressos: '+pv.ingressos+'</div>'
+      +'<div class="print-result">Receita da porta: '+fmtMoney(pv.receitaIngressos)+'</div>'
+      +'<div class="print-result">Lucro de copa (presença '+Math.round(pv.presencaTotal)+' pessoas, com '+f.cortesiaPessoas+' de cortesia): '+fmtMoney(pv.lucroCopa)+'</div>'
+      +(f.totalPatrocinio>0?'<div class="print-result">Cota de patrocínio: '+fmtMoney(f.totalPatrocinio)+'</div>':"")
+      +'<div class="print-result">Custos totais: '+fmtMoney(f.totalCustos)+'</div>'
+      +'<div class="print-result"><strong>Resultado: '+fmtMoney(pv.saldo)+'</strong></div>'
+      +(f.isCollab?('<div class="print-result">Repasse total ao parceiro: '+fmtMoney(pv.repasseTotal)+'</div><div class="print-result"><strong>Fica com a Fuga: '+fmtMoney(pv.saldoFuga)+'</strong></div>'):"")
       +'<div class="print-note" style="margin-top:10px">Gerado em '+(new Date()).toLocaleDateString("pt-BR")+'.</div>'
       +'</div>';
   }
@@ -1240,6 +1254,7 @@ function App(){
         percParceiroCopa:tipo==="collab"?(parseFloat(document.getElementById("neParceiroPercCopa").value)||0):0,
         status:"planejamento",
         notas:"",
+        estimativaPublico:null,
         espacos:[],
         tasks:TASK_TEMPLATE.map(function(t){return {id:uid(),categoria:t.categoria,titulo:t.titulo,lado:t.lado,status:"pendente",responsavel:"",prazo:"",valor:null,obs:""};}),
         lotes:[],
@@ -1249,7 +1264,7 @@ function App(){
         gastoMedioBar:null,
         margemCopa:30,
         quebraPct:10,
-        cortesiaPct:10,
+        cortesiaPessoas:null,
         vendasDiaEsperadas:null
       };
       var ns=deepClone(state);

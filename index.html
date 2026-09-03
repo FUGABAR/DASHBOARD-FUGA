@@ -712,8 +712,8 @@ function App(){
         ?'<span class="mono" style="color:'+(fin.atual.saldo<0?"var(--bad)":"var(--good)")+'">'+fmtMoney(fin.atual.saldo)+'</span>'
         :'<span style="color:var(--text-muted)">—</span>';
       return '<tr class="row-clickable" data-action="open-event" data-id="'+e.id+'">'
-        +'<td><div class="event-name">'+esc(e.nome||"Sem nome")+'</div><div class="event-sub">'+esc([(e.local||e.cidade||""),(e.espacos||[]).join(" + ")].filter(Boolean).join(" · "))+'</div></td>'
         +'<td class="mono">'+fmtDate(e.data)+'</td>'
+        +'<td><div class="event-name">'+esc(e.nome||"Sem nome")+'</div><div class="event-sub">'+esc([(e.local||e.cidade||""),(e.espacos||[]).join(" + ")].filter(Boolean).join(" · "))+'</div></td>'
         +'<td>'+tipoLabel+'</td>'
         +'<td><span class="pill pill-'+e.status+'">'+statusLabel(STATUS_EVENTO,e.status)+'</span></td>'
         +'<td><div class="progress-cell"><div class="progress-track"><div class="progress-fill" style="width:'+prog.pct+'%"></div></div><span class="progress-frac">'+prog.done+"/"+prog.total+'</span></div></td>'
@@ -732,12 +732,12 @@ function App(){
       : (filtered.length===0
         ? '<div class="empty"><h3>Nada encontrado</h3><p>Ajuste a busca ou os filtros para ver outros eventos.</p></div>'
         : '<div class="table-wrap"><table><thead><tr>'
-          +"<th>Evento</th><th>Data</th><th>Tipo</th><th>Status</th><th>Tarefas</th><th>Lote atual</th><th>Financeiro</th><th>Alertas</th>"
+          +"<th>Data</th><th>Evento</th><th>Tipo</th><th>Status</th><th>Tarefas</th><th>Lote atual</th><th>Financeiro</th><th>Alertas</th>"
           +"</tr></thead><tbody>"+rows+"</tbody></table></div>");
 
     return ""
       +(readOnly?'<div class="banner">'+ICONS.alert+"Suas alterações NÃO estão sendo salvas nesta janela — peça a quem compartilhou o link para conferir sua permissão de edição.</div>":"")
-      +'<div class="topbar"><div class="brand"><img class="brand-logo" src="'+LOGO_SRC+'" alt="Fuga"><div><h1>Painel de Eventos</h1><p>Passagens, hotel, som, riders, transfers e ingressos — todos os eventos, um só lugar.</p></div></div>'
+      +'<div class="topbar"><div class="brand"><img class="brand-logo" src="'+LOGO_SRC+'" alt="Fuga"><div><h1>Painel de Eventos</h1></div></div>'
       +'<div class="topbar-actions">'+refreshBarHtml()+(window.__fugaRole==="admin"?'<button class="btn btn-ghost" data-action="open-access-modal">Acessos de parceiros</button>':"")+(readOnly||window.__fugaRole!=="admin"?"":'<button class="btn btn-primary" data-action="new-event">'+ICONS.plus+"Novo evento</button>")+"</div>"
       +"</div>"
       +renderAlerts()
@@ -846,7 +846,7 @@ function App(){
         +'<td class="col-status"><select data-entity="task" data-id="'+t.id+'" data-field="status"'+dis+'>'+STATUS_TASK.map(function(s){return '<option value="'+s[0]+'"'+(t.status===s[0]?" selected":"")+'>'+s[1]+"</option>";}).join("")+"</select></td>"
         +'<td><input type="text" value="'+esc(t.responsavel||"")+'" placeholder="Quem cuida" data-entity="task" data-id="'+t.id+'" data-field="responsavel"'+dis+'></td>'
         +'<td><input type="date" value="'+esc(t.prazo||"")+'" data-entity="task" data-id="'+t.id+'" data-field="prazo"'+dis+'>'+(od?'<div class="alert-flag">'+ICONS.alert+"atrasada</div>":soon?'<div class="alert-flag warn">'+ICONS.alert+"prazo próximo</div>":"")+(t.prazo?'<button type="button" class="btn btn-ghost btn-sm" style="margin-top:4px;padding:4px 6px" data-action="add-to-gcal" data-id="'+t.id+'" title="Adicionar ao Google Calendar">'+ICONS.calendar+"</button>":"")+'</td>'
-        +'<td><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="0.01" value="'+(t.valor==null?"":t.valor)+'" placeholder="0,00" data-entity="task" data-id="'+t.id+'" data-field="valor"'+dis+'></span></td>'
+        +'<td><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" value="'+(t.valor==null?"":t.valor)+'" placeholder="0,00" data-entity="task" data-id="'+t.id+'" data-field="valor"'+dis+'></span></td>'
         +'<td class="col-obs"><textarea rows="1" placeholder="Observações" data-entity="task" data-id="'+t.id+'" data-field="obs"'+dis+'>'+esc(t.obs||"")+"</textarea></td>"
         +'<td>'+(readOnly?"":'<button class="btn btn-danger btn-sm" data-action="remove-task" data-id="'+t.id+'" title="Remover tarefa">'+ICONS.trash+"</button>")+'</td>'
         +"</tr>";
@@ -855,7 +855,7 @@ function App(){
     var loteRows=(ev.lotes||[]).map(function(l){
       return '<tr>'
         +'<td><select data-entity="lote" data-id="'+l.id+'" data-field="nome"'+dis+'>'+tipoIngressoOptionsHtml(l.nome)+"</select></td>"
-        +'<td><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="0.01" value="'+(l.preco==null?"":l.preco)+'" placeholder="0,00" data-entity="lote" data-id="'+l.id+'" data-field="preco"'+dis+'></span></td>'
+        +'<td><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" value="'+(l.preco==null?"":l.preco)+'" placeholder="0,00" data-entity="lote" data-id="'+l.id+'" data-field="preco"'+dis+'></span></td>'
         +'<td><input type="number" value="'+(l.vendidos==null?0:l.vendidos)+'" placeholder="0" data-entity="lote" data-id="'+l.id+'" data-field="vendidos"'+dis+'></td>'
         +'<td><select data-entity="lote" data-id="'+l.id+'" data-field="status"'+dis+'>'+STATUS_LOTE.map(function(s){return '<option value="'+s[0]+'"'+(l.status===s[0]?" selected":"")+'>'+s[1]+"</option>";}).join("")+"</select></td>"
         +'<td>'+(readOnly?"":'<button class="btn btn-danger btn-sm" data-action="remove-lote" data-id="'+l.id+'" title="Remover lote">'+ICONS.trash+"</button>")+'</td>'
@@ -866,7 +866,7 @@ function App(){
       return '<tr>'
         +'<td><input type="text" value="'+esc(c.descricao||"")+'" data-entity="custo" data-id="'+c.id+'" data-field="descricao"'+dis+'></td>'
         +'<td><select data-entity="custo" data-id="'+c.id+'" data-field="categoria"'+dis+'>'+CATEGORIAS_CUSTO.map(function(cat){return '<option'+(c.categoria===cat?" selected":"")+'>'+cat+"</option>";}).join("")+"</select></td>"
-        +'<td><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="0.01" value="'+(c.valor==null?"":c.valor)+'" placeholder="0,00" data-entity="custo" data-id="'+c.id+'" data-field="valor"'+dis+'></span></td>'
+        +'<td><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" value="'+(c.valor==null?"":c.valor)+'" placeholder="0,00" data-entity="custo" data-id="'+c.id+'" data-field="valor"'+dis+'></span></td>'
         +'<td>'+(readOnly?"":'<button class="btn btn-danger btn-sm" data-action="remove-custo" data-id="'+c.id+'" title="Remover custo">'+ICONS.trash+"</button>")+'</td>'
         +"</tr>";
     }).join("");
@@ -900,7 +900,7 @@ function App(){
       +"</tbody></table>"
       +(readOnly?"":'<div class="add-row">'
         +'<div class="field grow"><label>Tipo de ingresso</label><select id="newLoteNome">'+tipoIngressoOptionsHtml("")+"</select></div>"
-        +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="0.01" id="newLotePreco" placeholder="0,00"></span></div>'
+        +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newLotePreco" placeholder="0,00"></span></div>'
         +'<div class="field"><label>Vendidos</label><input type="number" id="newLoteVendidos" placeholder="0"></div>'
         +'<button class="btn btn-ghost btn-sm" data-action="add-lote">'+ICONS.plus+"Adicionar lote</button>"
         +"</div>")
@@ -912,7 +912,7 @@ function App(){
       +(readOnly?"":'<div class="add-row">'
         +'<div class="field grow"><label>Descrição</label><input type="text" id="newCustoDescricao" placeholder="Ex.: Cachê DJ Fulano"></div>'
         +'<div class="field"><label>Categoria</label><select id="newCustoCategoria">'+CATEGORIAS_CUSTO.map(function(c){return "<option>"+c+"</option>";}).join("")+"</select></div>"
-        +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="0.01" id="newCustoValor" placeholder="0,00"></span></div>'
+        +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newCustoValor" placeholder="0,00"></span></div>'
         +'<button class="btn btn-ghost btn-sm" data-action="add-custo">'+ICONS.plus+"Adicionar custo</button>"
         +"</div>")
       +"</div></div>"
@@ -957,7 +957,7 @@ function App(){
     return '<div class="section" id="sec-financeiro"><div class="section-head"><h2>Expectativa financeira</h2><span class="hint">Distância até o break-even — não é uma previsão de lucro</span></div>'
       +hero
       +'<div class="fin-inputs">'
-      +'<div class="field"><label>Gasto médio de bar por pessoa (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="0.01" style="width:110px" value="'+(ev.gastoMedioBar==null?"":ev.gastoMedioBar)+'" placeholder="0,00" data-entity="event" data-id="'+ev.id+'" data-field="gastoMedioBar"'+dis+'></span></div>'
+      +'<div class="field"><label>Gasto médio de bar por pessoa (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" style="width:110px" value="'+(ev.gastoMedioBar==null?"":ev.gastoMedioBar)+'" placeholder="0,00" data-entity="event" data-id="'+ev.id+'" data-field="gastoMedioBar"'+dis+'></span></div>'
       +'<div class="field"><label>Margem de lucro da copa (%)</label><input type="number" step="1" style="min-width:90px" value="'+(ev.margemCopa==null?30:ev.margemCopa)+'" data-entity="event" data-id="'+ev.id+'" data-field="margemCopa"'+dis+'></div>'
       +'<div class="field"><label>Quebra de comparecimento (%)</label><input type="number" step="1" style="min-width:90px" value="'+(ev.quebraPct==null?10:ev.quebraPct)+'" data-entity="event" data-id="'+ev.id+'" data-field="quebraPct"'+dis+'></div>'
       +'<div class="field"><label>Cortesias (%)</label><input type="number" step="1" style="min-width:90px" value="'+(ev.cortesiaPct==null?10:ev.cortesiaPct)+'" data-entity="event" data-id="'+ev.id+'" data-field="cortesiaPct"'+dis+'></div>'

@@ -264,6 +264,11 @@ tbody tr.row-clickable:hover{background:var(--surface-2)}
 .back-link:hover{color:var(--text)}
 .detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px;flex-wrap:wrap}
 .detail-title-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.detail-collapse-btn{
+  display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;flex-shrink:0;
+  border:1px solid var(--border);border-radius:6px;background:var(--surface-2);color:var(--text-muted);cursor:pointer;
+}
+.detail-collapse-btn:hover{border-color:var(--accent);color:var(--accent)}
 .title-input{
   font-family:var(--font-display);font-size:26px;font-weight:700;border:1px solid transparent;background:transparent;
   padding:2px 6px;border-radius:6px;min-width:220px;
@@ -929,6 +934,7 @@ function App(){
     if(!ev){ui.view="dashboard";ui.selectedEventId=null;return renderDashboard();}
     var prog=taskProgress(ev);
     var dis=readOnly?" disabled":"";
+    var detColapsado=!!(ui.detalhesColapsados&&ui.detalhesColapsados[ev.id]);
 
     var fieldGrid='<div class="field-grid">'
       +'<div class="field"><label>Data do evento</label><input type="date" value="'+esc(ev.data||"")+'" data-entity="event" data-id="'+ev.id+'" data-field="data"'+dis+'></div>'
@@ -1015,16 +1021,7 @@ function App(){
         +"</tr>";
     }).join("");
 
-    return ""
-      +(readOnly?'<div class="banner">'+ICONS.alert+"Suas alterações NÃO estão sendo salvas nesta janela — peça a quem compartilhou o link para conferir sua permissão de edição.</div>":"")
-      +'<div class="detail-topbar">'+(window.__fugaRole==="partner"&&partnerEventIds(window.__fugaProfile).length<=1?'<span class="back-link" style="cursor:default;text-decoration:none">'+esc(ev.nome||"Evento")+'</span>':'<button class="back-link" data-action="back">'+iconLeft()+(window.__fugaRole==="partner"?"Meus eventos":"Todos os eventos")+'</button>')+'<button class="btn btn-ghost" data-action="print-summary" data-id="'+ev.id+'">'+ICONS.printer+"Resumo do evento (PDF)</button>"+refreshBarHtml()+"</div>"
-      +'<div class="detail-head"><div class="detail-title-row">'
-      +'<input class="title-input" value="'+esc(ev.nome||"")+'" placeholder="Nome do evento" data-entity="event" data-id="'+ev.id+'" data-field="nome"'+dis+'>'
-      +'<span class="pill pill-'+ev.status+'">'+statusLabel(STATUS_EVENTO,ev.status)+'</span>'
-      +(ev.tipo==="collab"?'<span class="pill pill-collab">Collab'+(ev.parceiro?" · "+esc(ev.parceiro):"")+'</span>':'<span class="pill pill-proprio">Próprio</span>')
-      +"</div>"
-      +(readOnly||window.__fugaRole==="partner"?"":'<button class="btn btn-danger" data-action="delete-event" data-id="'+ev.id+'">'+ICONS.trash+"Excluir evento</button>")
-      +"</div>"
+    var detailBody=""
       +'<nav class="quicknav"><a href="#sec-geral">Visão geral</a><a href="#sec-mapa">Mapa</a><a href="#sec-checklist">Checklist</a><a href="#sec-ingressos">Ingressos</a><a href="#sec-custos">Custos</a><a href="#sec-patrocinio">Patrocínio</a><a href="#sec-adiantamento">Adiantamento</a><a href="#sec-financeiro">Financeiro</a></nav>'
       +'<div id="sec-geral">'+fieldGrid+"</div>"
       +mapaSection
@@ -1087,6 +1084,19 @@ function App(){
         +"</div>")
       +"</div></div>"
       +renderFinanceiro(ev);
+
+    return ""
+      +(readOnly?'<div class="banner">'+ICONS.alert+"Suas alterações NÃO estão sendo salvas nesta janela — peça a quem compartilhou o link para conferir sua permissão de edição.</div>":"")
+      +'<div class="detail-topbar">'+(window.__fugaRole==="partner"&&partnerEventIds(window.__fugaProfile).length<=1?'<span class="back-link" style="cursor:default;text-decoration:none">'+esc(ev.nome||"Evento")+'</span>':'<button class="back-link" data-action="back">'+iconLeft()+(window.__fugaRole==="partner"?"Meus eventos":"Todos os eventos")+'</button>')+'<button class="btn btn-ghost" data-action="print-summary" data-id="'+ev.id+'">'+ICONS.printer+"Resumo do evento (PDF)</button>"+refreshBarHtml()+"</div>"
+      +'<div class="detail-head"><div class="detail-title-row">'
+      +'<button type="button" class="detail-collapse-btn" data-action="toggle-detail-collapse" data-id="'+ev.id+'" aria-expanded="'+(detColapsado?"false":"true")+'" title="'+(detColapsado?"Mostrar detalhes do evento":"Minimizar detalhes do evento")+'"><span class="avisos-chevron'+(detColapsado?"":" open")+'">'+ICONS.chevron+"</span></button>"
+      +'<input class="title-input" value="'+esc(ev.nome||"")+'" placeholder="Nome do evento" data-entity="event" data-id="'+ev.id+'" data-field="nome"'+dis+'>'
+      +'<span class="pill pill-'+ev.status+'">'+statusLabel(STATUS_EVENTO,ev.status)+'</span>'
+      +(ev.tipo==="collab"?'<span class="pill pill-collab">Collab'+(ev.parceiro?" · "+esc(ev.parceiro):"")+'</span>':'<span class="pill pill-proprio">Próprio</span>')
+      +"</div>"
+      +(readOnly||window.__fugaRole==="partner"?"":'<button class="btn btn-danger" data-action="delete-event" data-id="'+ev.id+'">'+ICONS.trash+"Excluir evento</button>")
+      +"</div>"
+      +(detColapsado?"":detailBody);
   }
 
   function iconLeft(){return '<svg class="icon" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';}
@@ -1319,6 +1329,11 @@ function App(){
       var gkey=el.dataset.key;
       ui.avisosColapsados=ui.avisosColapsados||{};
       ui.avisosColapsados[gkey]=!ui.avisosColapsados[gkey];
+      saveUi();render();
+    }else if(action==="toggle-detail-collapse"){
+      var evKey=el.dataset.id;
+      ui.detalhesColapsados=ui.detalhesColapsados||{};
+      ui.detalhesColapsados[evKey]=!ui.detalhesColapsados[evKey];
       saveUi();render();
     }else if(action==="open-event"){
       ui.view="detail";ui.selectedEventId=el.dataset.id;saveUi();render();

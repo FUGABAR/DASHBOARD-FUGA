@@ -284,6 +284,7 @@ tbody tr.row-clickable:hover{background:var(--surface-2)}
 .section-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;gap:10px}
 .section-head h2{font-size:18px}
 .section-head .hint{font-size:12px;color:var(--text-muted)}
+.section-head-left{display:flex;align-items:center;gap:8px}
 
 .progress-summary{display:flex;align-items:center;gap:12px;margin-bottom:10px}
 .progress-summary .progress-track{max-width:280px}
@@ -475,18 +476,6 @@ function App(){
     bar:"#C93FC9",caixa:"#E4463C",banheiro:"#3F8F4F",entrada:"#9AA0A6",
     portaria:"#22C1E0",cozinha:"#F4B93F",palco:"#F2A05A"
   };
-  var MAPS=[
-    {id:"m1",nome:"Fugão + Fuguinha + Pátio — Palco ao fundo do Fugão",fugao:true,patio:true,palcoFugao:{x:520,y:110,w:200,h:130},swapBarPalco:false,palcoFuguinha:null,palcoPatio:false,patioExtra:null},
-    {id:"m2",nome:"Fuguinha + Pátio — Palco na lateral da Fuguinha",fugao:false,patio:true,palcoFugao:null,swapBarPalco:false,palcoFuguinha:"left",palcoPatio:false,patioExtra:{foodTrucks:true,portariaEntrada:true,cozinha:true}},
-    {id:"m3",nome:"Fuguinha + Pátio — Palco central na Fuguinha",fugao:false,patio:true,palcoFugao:null,swapBarPalco:false,palcoFuguinha:"center",palcoPatio:false,patioExtra:{foodTrucks:true,portariaEntrada:true,cozinha:true}},
-    {id:"m4",nome:"Fuguinha + Pátio — Palco no Pátio",fugao:false,patio:true,palcoFugao:null,swapBarPalco:false,palcoFuguinha:null,palcoPatio:true,patioExtra:{foodTrucks:true,portariaEntrada:true,cozinha:true}},
-    {id:"m5",nome:"Fugão + Fuguinha + Pátio — Palco no Fugão e na Fuguinha",fugao:true,patio:true,palcoFugao:"ghost",swapBarPalco:false,palcoFuguinha:"left",palcoPatio:false,patioExtra:null},
-    {id:"m6",nome:"Fugão + Fuguinha + Pátio — Palco na Fuguinha, com Food Trucks",fugao:true,patio:true,palcoFugao:"ghost",swapBarPalco:false,palcoFuguinha:"left",palcoPatio:false,patioExtra:{foodTrucks:true,portariaEntrada:true,cozinha:false}},
-    {id:"m7",nome:"Fugão + Fuguinha + Pátio — Palco central no Fugão",fugao:true,patio:true,palcoFugao:{x:520,y:210,w:200,h:130},swapBarPalco:false,palcoFuguinha:null,palcoPatio:false,patioExtra:null},
-    {id:"m8",nome:"Fugão + Fuguinha + Pátio — Palco próximo à entrada",fugao:true,patio:true,palcoFugao:{x:650,y:110,w:200,h:130},swapBarPalco:false,palcoFuguinha:null,palcoPatio:false,patioExtra:null},
-    {id:"m9",nome:"Fugão + Fuguinha + Pátio — Palco e Bar invertidos no Fugão",fugao:true,patio:true,palcoFugao:null,swapBarPalco:true,palcoFuguinha:null,palcoPatio:false,patioExtra:null},
-    {id:"m10",nome:"Fugão isolado — Palco e Bar invertidos",fugao:true,patio:false,palcoFugao:null,swapBarPalco:true,palcoFuguinha:null,palcoPatio:false,patioExtra:null}
-  ];
   function mzRect(x,y,w,h,fill){
     return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="'+fill+'" stroke="rgba(0,0,0,.28)" stroke-width="1"/>';
   }
@@ -498,53 +487,49 @@ function App(){
   function mzZone(x,y,w,h,fill,label,vertical,fs){
     return mzRect(x,y,w,h,fill)+(label?mzLabel(x,y,w,h,label,vertical,fs):"");
   }
-  function mzGhost(x,y,w,h,label){
-    return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="none" stroke="'+MAP_COLORS.palco+'" stroke-width="3" stroke-dasharray="7,6"/>'+mzLabel(x,y,w,h,label,false,13);
-  }
   function mzTruck(x,y,w,h){
     return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="none" stroke="#6b6250" stroke-width="2"/><text x="'+(x+w/2)+'" y="'+(y+h/2)+'" font-size="8" fill="#6b6250" text-anchor="middle" dominant-baseline="middle">Food Truck</text>';
   }
+  /* zonas medidas a partir das plantas originais (pixels/2, proporções e áreas reais preservadas) */
+  var ZONE_PATIO_COMUM=[
+    {x:411,y:430,w:537,h:206,fill:"patio"},
+    {x:620,y:452,w:0,h:0,txt:"PÁTIO"},
+    {x:41,y:430,w:365,h:219,fill:"fuguinha"},
+    {x:223,y:632,w:0,h:0,txt:"FUGUINHA"},
+    {x:134,y:430,w:220,h:51,fill:"bar",label:"BAR",fs:14},
+    {x:355,y:430,w:54,h:51,fill:"caixa",label:"CAIXA",fs:11},
+    {x:489,y:581,w:190,h:38,fill:"banheiro",label:"BANHEIRO",fs:13},
+    {x:398,y:495,w:23,h:67,fill:"passagem"},
+    {x:664,y:576,w:70,h:40,truck:true},
+    {x:832,y:437,w:53,h:31,truck:true}
+  ];
+  var MAPS=[
+    {id:"completo",nome:"Fugão + Fuguinha + Pátio (completo)",zones:ZONE_PATIO_COMUM.concat([
+      {x:273,y:112,w:516,h:308,fill:"fugao"},
+      {x:273,y:76,w:197,h:38,fill:"banheiro",label:"BANHEIRO",fs:12},
+      {x:312,y:194,w:97,h:228,fill:"palco",label:"PALCO",vertical:true,fs:15},
+      {x:790,y:110,w:59,h:125,fill:"bar",label:"BAR",vertical:true,fs:14},
+      {x:897,y:200,w:53,h:34,fill:"portaria",label:"PORTARIA",fs:9},
+      {x:790,y:235,w:160,h:47,fill:"entrada",label:"ENTRADA",fs:12},
+      {x:790,y:334,w:145,h:85,fill:"cozinha",label:"COZINHA",fs:13},
+      {x:447,y:405,w:23,h:38,fill:"passagem"},
+      {x:664,y:405,w:27,h:38,fill:"passagem"}
+    ])},
+    {id:"fuguinha-patio",nome:"Fuguinha + Pátio",zones:ZONE_PATIO_COMUM.concat([
+      {x:790,y:334,w:145,h:85,fill:"cozinha",label:"COZINHA",fs:13},
+      {x:832,y:539,w:53,h:36,fill:"portaria",label:"PORTARIA",fs:9},
+      {x:887,y:541,w:66,h:95,fill:"entrada",label:"ENTRADA",vertical:true,fs:11},
+      {x:42,y:495,w:67,h:124,fill:"palco",label:"PALCO",vertical:true,fs:14}
+    ])}
+  ];
   function renderMapSvg(m){
-    var c=MAP_COLORS,s="",oy=m.fugao?0:-290,totalH=m.patio?(m.fugao?700:410):400;
-    if(m.fugao){
-      s+=mzZone(190,90,760,290,c.fugao,null);
-      s+=mzZone(190,20,190,70,c.banheiro,"BANHEIRO",false,13);
-      s+=mzZone(230,140,55,230,m.swapBarPalco?c.palco:c.bar,m.swapBarPalco?"PALCO":"BAR",true,15);
-      s+=mzZone(790,90,160,70,c.portaria,"PORTARIA",false,11);
-      s+=mzZone(790,160,160,110,m.swapBarPalco?c.bar:c.entrada,m.swapBarPalco?"BAR":"ENTRADA",false,13);
-      s+=mzZone(790,270,160,110,c.cozinha,"COZINHA",false,14);
-      if(m.palcoFugao==="ghost")s+=mzGhost(520,110,200,130,"PALCO");
-      else if(m.palcoFugao)s+=mzZone(m.palcoFugao.x,m.palcoFugao.y,m.palcoFugao.w,m.palcoFugao.h,c.palco,"PALCO",false,16);
-    }
-    if(m.patio){
-      if(m.fugao){
-        s+=mzZone(430,365,40,30,c.passagem,null);
-        s+=mzZone(650,365,40,30,c.passagem,null);
-      }
-      var y=function(v){return v+oy;};
-      s+=mzZone(60,y(430),280,250,c.fuguinha,null);
-      s+='<text x="200" y="'+y(660)+'" font-size="12" font-weight="700" fill="#6b6250" text-anchor="middle">FUGUINHA</text>';
-      s+=mzZone(60,y(380),210,50,c.bar,"BAR",false,14);
-      s+=mzZone(270,y(380),70,50,c.caixa,"CAIXA",false,12);
-      if(m.palcoFuguinha==="left")s+=mzZone(60,y(430),70,250,c.palco,"PALCO",true,15);
-      else if(m.palcoFuguinha==="center")s+=mzZone(150,y(520),140,110,c.palco,"PALCO",false,15);
-      s+=mzZone(340,y(380),560,300,c.patio,null);
-      s+='<text x="620" y="'+y(410)+'" font-size="12" font-weight="700" fill="#6b6250" text-anchor="middle">PÁTIO</text>';
-      s+=mzZone(420,y(630),210,50,c.banheiro,"BANHEIRO",false,14);
-      if(m.palcoPatio)s+=mzZone(480,y(460),160,110,c.palco,"PALCO",false,15);
-      if(m.patioExtra){
-        if(m.patioExtra.foodTrucks){
-          s+=mzTruck(800,y(390),46,42);
-          s+=mzTruck(850,y(390),46,42);
-        }
-        if(m.patioExtra.portariaEntrada){
-          s+=mzZone(800,y(436),96,46,c.portaria,"PORTARIA",false,10);
-          s+=mzZone(800,y(486),96,90,c.entrada,"ENTRADA",false,12);
-        }
-        if(m.patioExtra.cozinha)s+=mzZone(800,y(580),96,90,c.cozinha,"COZINHA",false,12);
-      }
-    }
-    return '<svg viewBox="0 0 1000 '+totalH+'" xmlns="http://www.w3.org/2000/svg">'+s+'</svg>';
+    var s="";
+    m.zones.forEach(function(z){
+      if(z.truck){s+=mzTruck(z.x,z.y,z.w,z.h);return;}
+      if(z.txt){s+='<text x="'+z.x+'" y="'+z.y+'" font-size="12" font-weight="700" fill="#6b6250" text-anchor="middle">'+esc(z.txt)+'</text>';return;}
+      s+=mzZone(z.x,z.y,z.w,z.h,MAP_COLORS[z.fill],z.label,z.vertical,z.fs);
+    });
+    return '<svg viewBox="0 0 1000 660" xmlns="http://www.w3.org/2000/svg">'+s+'</svg>';
   }
   var TIPOS_INGRESSO=["PRÉ VENDA","LOTE 1","LOTE 1 MEIA","LOTE 2","LOTE 2 MEIA","LOTE 3","LOTE 3 MEIA","LOTE 4","LOTE 4 MEIA","LOTE 5","LOTE 5 MEIA","LOTE FINAL","LOTE EXTRA"];
 
@@ -928,13 +913,23 @@ function App(){
     return '<div class="section" id="sec-avisos"><div class="section-head"><h2>Avisos importantes</h2><span class="hint">'+alerts.length+" tarefa"+(alerts.length===1?"":"s")+' com prazo pendente · '+groups.length+" responsáve"+(groups.length===1?"l":"is")+'</span></div><div class="alerts-panel">'+groupsHtml+"</div></div>";
   }
 
+  /* ---------- colapso de seções, por evento (mantém cabeçalho sempre visível) ---------- */
+  function secOpen(evId,key){
+    return !(ui.secColapsadas&&ui.secColapsadas[evId]&&ui.secColapsadas[evId][key]);
+  }
+  function secHead(evId,key,titulo,hint){
+    var open=secOpen(evId,key);
+    return '<div class="section-head"><div class="section-head-left">'
+      +'<button type="button" class="detail-collapse-btn" data-action="toggle-section" data-event="'+evId+'" data-section="'+key+'" aria-expanded="'+(open?"true":"false")+'" title="'+(open?"Minimizar":"Expandir")+'"><span class="avisos-chevron'+(open?" open":"")+'">'+ICONS.chevron+'</span></button>'
+      +'<h2>'+titulo+'</h2></div><span class="hint">'+hint+'</span></div>';
+  }
+
   /* ---------- render: detail ---------- */
   function renderDetail(){
     var ev=findEvent(state,ui.selectedEventId);
     if(!ev){ui.view="dashboard";ui.selectedEventId=null;return renderDashboard();}
     var prog=taskProgress(ev);
     var dis=readOnly?" disabled":"";
-    var detColapsado=!!(ui.detalhesColapsados&&ui.detalhesColapsados[ev.id]);
 
     var fieldGrid='<div class="field-grid">'
       +'<div class="field"><label>Data do evento</label><input type="date" value="'+esc(ev.data||"")+'" data-entity="event" data-id="'+ev.id+'" data-field="data"'+dis+'></div>'
@@ -952,13 +947,16 @@ function App(){
 
     var mapaAtualId=ev.mapaSelecionado||MAPS[0].id;
     var mapaAtual=MAPS.filter(function(m){return m.id===mapaAtualId;})[0]||MAPS[0];
-    var mapaSection='<div class="section" id="sec-mapa"><div class="section-head"><h2>Mapa do evento</h2><span class="hint">Geometria simplificada — escolha a configuração de espaço deste evento</span></div>'
-      +'<div class="map-layout">'
-      +'<div class="map-preview"><div class="map-preview-name">'+esc(mapaAtual.nome)+'</div><div class="map-svg-wrap">'+renderMapSvg(mapaAtual)+'</div></div>'
-      +'<div class="map-list">'+MAPS.map(function(m,i){
-        return '<button type="button" class="map-list-item'+(m.id===mapaAtualId?" active":"")+'" data-action="select-map" data-value="'+m.id+'"'+dis+'><span class="n">'+(i+1)+'</span>'+esc(m.nome)+'</button>';
-      }).join("")+'</div>'
-      +'</div></div>';
+    var mapaSection='<div class="section" id="sec-mapa">'+secHead(ev.id,"mapa","Mapa do evento","Geometria simplificada — escolha a configuração de espaço deste evento")
+      +(secOpen(ev.id,"mapa")?(
+        '<div class="map-layout">'
+        +'<div class="map-preview"><div class="map-preview-name">'+esc(mapaAtual.nome)+'</div><div class="map-svg-wrap">'+renderMapSvg(mapaAtual)+'</div></div>'
+        +'<div class="map-list">'+MAPS.map(function(m,i){
+          return '<button type="button" class="map-list-item'+(m.id===mapaAtualId?" active":"")+'" data-action="select-map" data-value="'+m.id+'"'+dis+'><span class="n">'+(i+1)+'</span>'+esc(m.nome)+'</button>';
+        }).join("")+'</div>'
+        +'</div>'
+      ):"")
+      +'</div>';
 
     var taskRows=ev.tasks.map(function(t){
       var od=t.prazo&&t.prazo<todayISO()&&t.status!=="concluido";
@@ -1025,78 +1023,87 @@ function App(){
       +'<nav class="quicknav"><a href="#sec-geral">Visão geral</a><a href="#sec-mapa">Mapa</a><a href="#sec-checklist">Checklist</a><a href="#sec-ingressos">Ingressos</a><a href="#sec-custos">Custos</a><a href="#sec-patrocinio">Patrocínio</a><a href="#sec-adiantamento">Adiantamento</a><a href="#sec-financeiro">Financeiro</a></nav>'
       +'<div id="sec-geral">'+fieldGrid+"</div>"
       +mapaSection
-      +'<div class="section" id="sec-checklist"><div class="section-head"><h2>Checklist do evento</h2><span class="hint">'+prog.done+" de "+prog.total+' tarefas concluídas</span></div>'
-      +'<div class="progress-summary"><div class="progress-track"><div class="progress-fill" style="width:'+prog.pct+'%"></div></div></div>'
-      +'<div class="table-wrap"><table><thead><tr><th>Tarefa</th><th>Lado</th><th>Status</th><th>Responsável</th><th>Prazo</th><th>Valor (R$)</th><th>Observações</th><th></th></tr></thead><tbody>'
-      +taskRows+"</tbody></table>"
-      +(readOnly?"":'<div class="add-row">'
-        +'<div class="field"><label>Categoria</label><select id="newTaskCategoria">'+CATEGORIAS.map(function(c){return "<option>"+c+"</option>";}).join("")+"</select></div>"
-        +'<div class="field grow"><label>Título da tarefa</label><input type="text" id="newTaskTitulo" placeholder="Ex.: Confirmar horário de passagem de som"></div>'
-        +'<div class="field"><label>Lado</label><select id="newTaskLado">'+LADOS.map(function(l){return '<option value="'+l[0]+'">'+l[1]+"</option>";}).join("")+"</select></div>"
-        +'<div class="field"><label>Responsável</label><input type="text" id="newTaskResponsavel" placeholder="Quem cuida"></div>'
-        +'<div class="field"><label>Prazo</label><input type="date" id="newTaskPrazo"></div>'
-        +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newTaskValor" placeholder="0,00"></span></div>'
-        +'<div class="field grow"><label>Observações</label><input type="text" id="newTaskObs" placeholder="Observações"></div>'
-        +'<button class="btn btn-ghost btn-sm" data-action="add-task">'+ICONS.plus+"Adicionar tarefa</button>"
-        +"</div>")
-      +"</div></div>"
-      +'<div class="section" id="sec-ingressos"><div class="section-head"><h2>Lotes de ingresso</h2><span class="hint">Tipo, valor e vendidos por lote</span></div>'
-      +'<div class="table-wrap"><table><thead><tr><th>Tipo de ingresso</th><th>Valor (R$)</th><th>Vendidos</th><th>Status</th><th></th></tr></thead><tbody>'
-      +(loteRows||'<tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:20px">Nenhum lote cadastrado ainda</td></tr>')
-      +"</tbody></table>"
-      +(readOnly?"":'<div class="add-row">'
-        +'<div class="field grow"><label>Tipo de ingresso</label><select id="newLoteNome">'+tipoIngressoOptionsHtml("")+"</select></div>"
-        +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newLotePreco" placeholder="0,00"></span></div>'
-        +'<div class="field"><label>Vendidos</label><input type="number" id="newLoteVendidos" placeholder="0"></div>'
-        +'<button class="btn btn-ghost btn-sm" data-action="add-lote">'+ICONS.plus+"Adicionar lote</button>"
-        +"</div>")
-      +"</div></div>"
-      +'<div class="section" id="sec-custos"><div class="section-head"><h2>Custos do evento</h2><span class="hint">Bandas, DJs, produção, estrutura, marketing…</span></div>'
-      +'<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Valor (R$)</th><th></th></tr></thead><tbody>'
-      +(custoRows||'<tr><td colspan="4" style="color:var(--text-muted);text-align:center;padding:20px">Nenhum custo cadastrado ainda</td></tr>')
-      +"</tbody></table>"
-      +(readOnly?"":'<div class="add-row">'
-        +'<div class="field grow"><label>Descrição</label><input type="text" id="newCustoDescricao" placeholder="Ex.: Cachê DJ Fulano"></div>'
-        +'<div class="field"><label>Categoria</label><select id="newCustoCategoria">'+CATEGORIAS_CUSTO.map(function(c){return "<option>"+c+"</option>";}).join("")+"</select></div>"
-        +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newCustoValor" placeholder="0,00"></span></div>'
-        +'<button class="btn btn-ghost btn-sm" data-action="add-custo">'+ICONS.plus+"Adicionar custo</button>"
-        +"</div>")
-      +"</div></div>"
-      +'<div class="section" id="sec-patrocinio"><div class="section-head"><h2>Cota de patrocínio</h2><span class="hint">Grana que conseguimos, ou que o parceiro conseguiu de fora — soma na receita do evento</span></div>'
-      +'<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Valor (R$)</th><th></th></tr></thead><tbody>'
-      +(patrocinioRows||'<tr><td colspan="3" style="color:var(--text-muted);text-align:center;padding:20px">Nenhuma cota de patrocínio cadastrada ainda</td></tr>')
-      +"</tbody></table>"
-      +(readOnly?"":'<div class="add-row">'
-        +'<div class="field grow"><label>Descrição</label><input type="text" id="newPatrocinioDescricao" placeholder="Ex.: Patrocínio Marca X"></div>'
-        +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newPatrocinioValor" placeholder="0,00"></span></div>'
-        +'<button class="btn btn-ghost btn-sm" data-action="add-patrocinio">'+ICONS.plus+"Adicionar patrocínio</button>"
-        +"</div>")
-      +"</div></div>"
-      +'<div class="section" id="sec-adiantamento"><div class="section-head"><h2>Adiantamento</h2><span class="hint">Valor que a Fuga ou o parceiro adiantou — só informativo, não entra no saldo do evento</span></div>'
-      +'<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Quem adiantou</th><th>Valor (R$)</th><th></th></tr></thead><tbody>'
-      +(adiantamentoRows||'<tr><td colspan="4" style="color:var(--text-muted);text-align:center;padding:20px">Nenhum adiantamento cadastrado ainda</td></tr>')
-      +"</tbody></table>"
-      +(readOnly?"":'<div class="add-row">'
-        +'<div class="field grow"><label>Descrição</label><input type="text" id="newAdiantamentoDescricao" placeholder="Ex.: Sinal pago à banda"></div>'
-        +'<div class="field"><label>Quem adiantou</label><select id="newAdiantamentoQuem"><option value="fuga">Fuga</option><option value="parceiro">Parceiro</option></select></div>'
-        +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newAdiantamentoValor" placeholder="0,00"></span></div>'
-        +'<button class="btn btn-ghost btn-sm" data-action="add-adiantamento">'+ICONS.plus+"Adicionar adiantamento</button>"
-        +"</div>")
-      +"</div></div>"
+      +'<div class="section" id="sec-checklist">'+secHead(ev.id,"checklist","Checklist do evento",prog.done+" de "+prog.total+" tarefas concluídas")
+      +(secOpen(ev.id,"checklist")?(
+        '<div class="progress-summary"><div class="progress-track"><div class="progress-fill" style="width:'+prog.pct+'%"></div></div></div>'
+        +'<div class="table-wrap"><table><thead><tr><th>Tarefa</th><th>Lado</th><th>Status</th><th>Responsável</th><th>Prazo</th><th>Valor (R$)</th><th>Observações</th><th></th></tr></thead><tbody>'
+        +taskRows+"</tbody></table>"
+        +(readOnly?"":'<div class="add-row">'
+          +'<div class="field"><label>Categoria</label><select id="newTaskCategoria">'+CATEGORIAS.map(function(c){return "<option>"+c+"</option>";}).join("")+"</select></div>"
+          +'<div class="field grow"><label>Título da tarefa</label><input type="text" id="newTaskTitulo" placeholder="Ex.: Confirmar horário de passagem de som"></div>'
+          +'<div class="field"><label>Lado</label><select id="newTaskLado">'+LADOS.map(function(l){return '<option value="'+l[0]+'">'+l[1]+"</option>";}).join("")+"</select></div>"
+          +'<div class="field"><label>Responsável</label><input type="text" id="newTaskResponsavel" placeholder="Quem cuida"></div>'
+          +'<div class="field"><label>Prazo</label><input type="date" id="newTaskPrazo"></div>'
+          +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newTaskValor" placeholder="0,00"></span></div>'
+          +'<div class="field grow"><label>Observações</label><input type="text" id="newTaskObs" placeholder="Observações"></div>'
+          +'<button class="btn btn-ghost btn-sm" data-action="add-task">'+ICONS.plus+"Adicionar tarefa</button>"
+          +"</div>")
+      ):"")
+      +"</div>"
+      +'<div class="section" id="sec-ingressos">'+secHead(ev.id,"ingressos","Lotes de ingresso","Tipo, valor e vendidos por lote")
+      +(secOpen(ev.id,"ingressos")?(
+        '<div class="table-wrap"><table><thead><tr><th>Tipo de ingresso</th><th>Valor (R$)</th><th>Vendidos</th><th>Status</th><th></th></tr></thead><tbody>'
+        +(loteRows||'<tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:20px">Nenhum lote cadastrado ainda</td></tr>')
+        +"</tbody></table>"
+        +(readOnly?"":'<div class="add-row">'
+          +'<div class="field grow"><label>Tipo de ingresso</label><select id="newLoteNome">'+tipoIngressoOptionsHtml("")+"</select></div>"
+          +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newLotePreco" placeholder="0,00"></span></div>'
+          +'<div class="field"><label>Vendidos</label><input type="number" id="newLoteVendidos" placeholder="0"></div>'
+          +'<button class="btn btn-ghost btn-sm" data-action="add-lote">'+ICONS.plus+"Adicionar lote</button>"
+          +"</div>")
+      ):"")
+      +"</div>"
+      +'<div class="section" id="sec-custos">'+secHead(ev.id,"custos","Custos do evento","Bandas, DJs, produção, estrutura, marketing…")
+      +(secOpen(ev.id,"custos")?(
+        '<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Valor (R$)</th><th></th></tr></thead><tbody>'
+        +(custoRows||'<tr><td colspan="4" style="color:var(--text-muted);text-align:center;padding:20px">Nenhum custo cadastrado ainda</td></tr>')
+        +"</tbody></table>"
+        +(readOnly?"":'<div class="add-row">'
+          +'<div class="field grow"><label>Descrição</label><input type="text" id="newCustoDescricao" placeholder="Ex.: Cachê DJ Fulano"></div>'
+          +'<div class="field"><label>Categoria</label><select id="newCustoCategoria">'+CATEGORIAS_CUSTO.map(function(c){return "<option>"+c+"</option>";}).join("")+"</select></div>"
+          +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newCustoValor" placeholder="0,00"></span></div>'
+          +'<button class="btn btn-ghost btn-sm" data-action="add-custo">'+ICONS.plus+"Adicionar custo</button>"
+          +"</div>")
+      ):"")
+      +"</div>"
+      +'<div class="section" id="sec-patrocinio">'+secHead(ev.id,"patrocinio","Cota de patrocínio","Grana que conseguimos, ou que o parceiro conseguiu de fora — soma na receita do evento")
+      +(secOpen(ev.id,"patrocinio")?(
+        '<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Valor (R$)</th><th></th></tr></thead><tbody>'
+        +(patrocinioRows||'<tr><td colspan="3" style="color:var(--text-muted);text-align:center;padding:20px">Nenhuma cota de patrocínio cadastrada ainda</td></tr>')
+        +"</tbody></table>"
+        +(readOnly?"":'<div class="add-row">'
+          +'<div class="field grow"><label>Descrição</label><input type="text" id="newPatrocinioDescricao" placeholder="Ex.: Patrocínio Marca X"></div>'
+          +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newPatrocinioValor" placeholder="0,00"></span></div>'
+          +'<button class="btn btn-ghost btn-sm" data-action="add-patrocinio">'+ICONS.plus+"Adicionar patrocínio</button>"
+          +"</div>")
+      ):"")
+      +"</div>"
+      +'<div class="section" id="sec-adiantamento">'+secHead(ev.id,"adiantamento","Adiantamento","Valor que a Fuga ou o parceiro adiantou — só informativo, não entra no saldo do evento")
+      +(secOpen(ev.id,"adiantamento")?(
+        '<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Quem adiantou</th><th>Valor (R$)</th><th></th></tr></thead><tbody>'
+        +(adiantamentoRows||'<tr><td colspan="4" style="color:var(--text-muted);text-align:center;padding:20px">Nenhum adiantamento cadastrado ainda</td></tr>')
+        +"</tbody></table>"
+        +(readOnly?"":'<div class="add-row">'
+          +'<div class="field grow"><label>Descrição</label><input type="text" id="newAdiantamentoDescricao" placeholder="Ex.: Sinal pago à banda"></div>'
+          +'<div class="field"><label>Quem adiantou</label><select id="newAdiantamentoQuem"><option value="fuga">Fuga</option><option value="parceiro">Parceiro</option></select></div>'
+          +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newAdiantamentoValor" placeholder="0,00"></span></div>'
+          +'<button class="btn btn-ghost btn-sm" data-action="add-adiantamento">'+ICONS.plus+"Adicionar adiantamento</button>"
+          +"</div>")
+      ):"")
+      +"</div>"
       +renderFinanceiro(ev);
 
     return ""
       +(readOnly?'<div class="banner">'+ICONS.alert+"Suas alterações NÃO estão sendo salvas nesta janela — peça a quem compartilhou o link para conferir sua permissão de edição.</div>":"")
       +'<div class="detail-topbar">'+(window.__fugaRole==="partner"&&partnerEventIds(window.__fugaProfile).length<=1?'<span class="back-link" style="cursor:default;text-decoration:none">'+esc(ev.nome||"Evento")+'</span>':'<button class="back-link" data-action="back">'+iconLeft()+(window.__fugaRole==="partner"?"Meus eventos":"Todos os eventos")+'</button>')+'<button class="btn btn-ghost" data-action="print-summary" data-id="'+ev.id+'">'+ICONS.printer+"Resumo do evento (PDF)</button>"+refreshBarHtml()+"</div>"
       +'<div class="detail-head"><div class="detail-title-row">'
-      +'<button type="button" class="detail-collapse-btn" data-action="toggle-detail-collapse" data-id="'+ev.id+'" aria-expanded="'+(detColapsado?"false":"true")+'" title="'+(detColapsado?"Mostrar detalhes do evento":"Minimizar detalhes do evento")+'"><span class="avisos-chevron'+(detColapsado?"":" open")+'">'+ICONS.chevron+"</span></button>"
       +'<input class="title-input" value="'+esc(ev.nome||"")+'" placeholder="Nome do evento" data-entity="event" data-id="'+ev.id+'" data-field="nome"'+dis+'>'
       +'<span class="pill pill-'+ev.status+'">'+statusLabel(STATUS_EVENTO,ev.status)+'</span>'
       +(ev.tipo==="collab"?'<span class="pill pill-collab">Collab'+(ev.parceiro?" · "+esc(ev.parceiro):"")+'</span>':'<span class="pill pill-proprio">Próprio</span>')
       +"</div>"
       +(readOnly||window.__fugaRole==="partner"?"":'<button class="btn btn-danger" data-action="delete-event" data-id="'+ev.id+'">'+ICONS.trash+"Excluir evento</button>")
       +"</div>"
-      +(detColapsado?"":detailBody);
+      +detailBody;
   }
 
   function iconLeft(){return '<svg class="icon" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';}
@@ -1149,27 +1156,29 @@ function App(){
         +"</div>";
     };
 
-    return '<div class="section" id="sec-financeiro"><div class="section-head"><h2>Expectativa financeira</h2><span class="hint">Distância até o break-even — não é uma previsão de lucro</span></div>'
-      +hero
-      +'<div class="fin-inputs">'
-      +'<div class="field"><label>Gasto médio de bar por pessoa (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" style="width:110px" value="'+(ev.gastoMedioBar==null?"":ev.gastoMedioBar)+'" placeholder="0,00" data-entity="event" data-id="'+ev.id+'" data-field="gastoMedioBar"'+dis+'></span></div>'
-      +'<div class="field"><label>Margem de lucro da copa (%)</label><input type="number" step="1" style="min-width:90px" value="'+(ev.margemCopa==null?30:ev.margemCopa)+'" data-entity="event" data-id="'+ev.id+'" data-field="margemCopa"'+dis+'></div>'
-      +'<div class="field"><label>Quebra de comparecimento (%)</label><input type="number" step="1" style="min-width:90px" value="'+(ev.quebraPct==null?10:ev.quebraPct)+'" data-entity="event" data-id="'+ev.id+'" data-field="quebraPct"'+dis+'></div>'
-      +'<div class="field"><label>Cortesias (pessoas)</label><input type="number" step="1" min="0" style="min-width:90px" placeholder="0" value="'+(ev.cortesiaPessoas==null?"":ev.cortesiaPessoas)+'" data-entity="event" data-id="'+ev.id+'" data-field="cortesiaPessoas"'+dis+'></div>'
-      +'<div class="field"><label>Vendas extras esperadas no dia</label><input type="number" step="1" style="min-width:110px" value="'+(ev.vendasDiaEsperadas==null?"":ev.vendasDiaEsperadas)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="vendasDiaEsperadas"'+dis+'></div>'
-      +(f.isCollab?(
-        '<div class="field"><label>% da porta p/ parceiro</label><input type="number" step="1" min="0" max="100" style="min-width:100px" value="'+(ev.percParceiroPorta==null?"":ev.percParceiroPorta)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="percParceiroPorta"'+dis+'></div>'
-        +'<div class="field"><label>% da copa p/ parceiro</label><input type="number" step="1" min="0" max="100" style="min-width:100px" value="'+(ev.percParceiroCopa==null?"":ev.percParceiroCopa)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="percParceiroCopa"'+dis+'></div>'
+    return '<div class="section" id="sec-financeiro">'+secHead(ev.id,"financeiro","Expectativa financeira","Distância até o break-even — não é uma previsão de lucro")
+      +(secOpen(ev.id,"financeiro")?(
+        hero
+        +'<div class="fin-inputs">'
+        +'<div class="field"><label>Gasto médio de bar por pessoa (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" style="width:110px" value="'+(ev.gastoMedioBar==null?"":ev.gastoMedioBar)+'" placeholder="0,00" data-entity="event" data-id="'+ev.id+'" data-field="gastoMedioBar"'+dis+'></span></div>'
+        +'<div class="field"><label>Margem de lucro da copa (%)</label><input type="number" step="1" style="min-width:90px" value="'+(ev.margemCopa==null?30:ev.margemCopa)+'" data-entity="event" data-id="'+ev.id+'" data-field="margemCopa"'+dis+'></div>'
+        +'<div class="field"><label>Quebra de comparecimento (%)</label><input type="number" step="1" style="min-width:90px" value="'+(ev.quebraPct==null?10:ev.quebraPct)+'" data-entity="event" data-id="'+ev.id+'" data-field="quebraPct"'+dis+'></div>'
+        +'<div class="field"><label>Cortesias (pessoas)</label><input type="number" step="1" min="0" style="min-width:90px" placeholder="0" value="'+(ev.cortesiaPessoas==null?"":ev.cortesiaPessoas)+'" data-entity="event" data-id="'+ev.id+'" data-field="cortesiaPessoas"'+dis+'></div>'
+        +'<div class="field"><label>Vendas extras esperadas no dia</label><input type="number" step="1" style="min-width:110px" value="'+(ev.vendasDiaEsperadas==null?"":ev.vendasDiaEsperadas)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="vendasDiaEsperadas"'+dis+'></div>'
+        +(f.isCollab?(
+          '<div class="field"><label>% da porta p/ parceiro</label><input type="number" step="1" min="0" max="100" style="min-width:100px" value="'+(ev.percParceiroPorta==null?"":ev.percParceiroPorta)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="percParceiroPorta"'+dis+'></div>'
+          +'<div class="field"><label>% da copa p/ parceiro</label><input type="number" step="1" min="0" max="100" style="min-width:100px" value="'+(ev.percParceiroCopa==null?"":ev.percParceiroCopa)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="percParceiroCopa"'+dis+'></div>'
+        ):"")
+        +'</div>'
+        +(f.totalAdiantamento>0?('<div class="fin-callout" style="background:transparent;border:1px solid var(--border);margin-bottom:16px">'+ICONS.alert
+          +'<span>Adiantamento (informativo, não entra em nenhum resultado abaixo): '+fmtMoney(f.totalAdiantamento)
+          +(f.totalAdiantamentoFuga>0?" · Fuga adiantou "+fmtMoney(f.totalAdiantamentoFuga):"")
+          +(f.totalAdiantamentoParceiro>0?" · Parceiro adiantou "+fmtMoney(f.totalAdiantamentoParceiro):"")
+          +"</span></div>"):"")
+        +scenarioBlock("Cenário atual","Porta + copa, só com o que já foi vendido até agora",a)
+        +scenarioBlock("Cenário possível","Porta atual + cortesia ("+f.cortesiaPessoas+" pessoas) + "+f.vendasDia+" vendas esperadas no dia"+(f.ultimoLote?' (pelo valor do último lote, "'+esc(f.ultimoLote.nome)+'")':""),pv)
+        +bars
       ):"")
-      +'</div>'
-      +(f.totalAdiantamento>0?('<div class="fin-callout" style="background:transparent;border:1px solid var(--border);margin-bottom:16px">'+ICONS.alert
-        +'<span>Adiantamento (informativo, não entra em nenhum resultado abaixo): '+fmtMoney(f.totalAdiantamento)
-        +(f.totalAdiantamentoFuga>0?" · Fuga adiantou "+fmtMoney(f.totalAdiantamentoFuga):"")
-        +(f.totalAdiantamentoParceiro>0?" · Parceiro adiantou "+fmtMoney(f.totalAdiantamentoParceiro):"")
-        +"</span></div>"):"")
-      +scenarioBlock("Cenário atual","Porta + copa, só com o que já foi vendido até agora",a)
-      +scenarioBlock("Cenário possível","Porta atual + cortesia ("+f.cortesiaPessoas+" pessoas) + "+f.vendasDia+" vendas esperadas no dia"+(f.ultimoLote?' (pelo valor do último lote, "'+esc(f.ultimoLote.nome)+'")':""),pv)
-      +bars
       +"</div>";
   }
 
@@ -1330,10 +1339,11 @@ function App(){
       ui.avisosColapsados=ui.avisosColapsados||{};
       ui.avisosColapsados[gkey]=!ui.avisosColapsados[gkey];
       saveUi();render();
-    }else if(action==="toggle-detail-collapse"){
-      var evKey=el.dataset.id;
-      ui.detalhesColapsados=ui.detalhesColapsados||{};
-      ui.detalhesColapsados[evKey]=!ui.detalhesColapsados[evKey];
+    }else if(action==="toggle-section"){
+      var secEvId=el.dataset.event,secKey=el.dataset.section;
+      ui.secColapsadas=ui.secColapsadas||{};
+      ui.secColapsadas[secEvId]=ui.secColapsadas[secEvId]||{};
+      ui.secColapsadas[secEvId][secKey]=!ui.secColapsadas[secEvId][secKey];
       saveUi();render();
     }else if(action==="open-event"){
       ui.view="detail";ui.selectedEventId=el.dataset.id;saveUi();render();

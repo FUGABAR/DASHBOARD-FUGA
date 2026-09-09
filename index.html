@@ -864,39 +864,63 @@ function App(){
       return true;
     }).sort(function(a,b){return (a.data||"9999").localeCompare(b.data||"9999");});
 
-    var rows=filtered.map(function(e){
-      var prog=taskProgress(e);
-      var od=e.status!=="cancelado"?overdueTasks(e):[];
-      var lote=loteAtual(e);
-      var fin=financeSummary(e);
-      var tipoLabel=e.tipo==="collab"?('<span class="pill pill-collab">Collab'+(e.parceiro?" · "+esc(e.parceiro):"")+'</span>'):'<span class="pill pill-proprio">Próprio</span>';
-      var finCell=(e.custos&&e.custos.length)||(e.lotes&&e.lotes.some(function(l){return l.vendidos;}))
-        ?'<span class="mono" style="color:'+(fin.atual.saldo<0?"var(--bad)":"var(--good)")+'">'+fmtMoney(fin.atual.saldo)+'</span>'
-        :'<span style="color:var(--text-muted)">—</span>';
-      var mapaAtivo=MAPS.filter(function(mm){return mm.id===e.mapaSelecionado;})[0];
-      return '<tr class="row-clickable" data-action="open-event" data-id="'+e.id+'">'
-        +'<td class="mono">'+fmtDate(e.data)+(e.data?' <button type="button" class="btn btn-ghost btn-sm" style="padding:3px 6px;margin-left:2px" data-action="add-to-gcal-event" data-id="'+e.id+'" title="Adicionar ao Google Calendar">'+ICONS.calendar+"</button>":"")+'</td>'
-        +'<td><div class="event-name">'+esc(e.nome||"Sem nome")+'</div><div class="event-sub">'+esc([(e.local||e.cidade||""),(mapaAtivo?mapaAtivo.nome.split(" — ")[0]:"")].filter(Boolean).join(" · "))+'</div></td>'
-        +'<td>'+tipoLabel+'</td>'
-        +'<td><span class="pill pill-'+e.status+'">'+statusLabel(STATUS_EVENTO,e.status)+'</span></td>'
-        +'<td><div class="progress-cell"><div class="progress-track"><div class="progress-fill" style="width:'+prog.pct+'%"></div></div><span class="progress-frac">'+prog.done+"/"+prog.total+'</span></div></td>'
-        +'<td class="mono">'+(lote?esc(lote.nome)+' · '+fmtMoney(lote.preco):"—")+'</td>'
-        +'<td>'+finCell+'</td>'
-        +'<td>'+(od.length?'<span class="alert-flag">'+ICONS.alert+od.length+" atrasada"+(od.length>1?"s":"")+'</span>':'<span style="color:var(--text-muted)">—</span>')+'</td>'
-        +'</tr>';
-    }).join("");
+    // Eventos concluídos saem da lista principal e vão para uma lista própria,
+    // mais discreta, lá embaixo — assim a lista de cima fica só com o que
+    // ainda está em andamento.
+    var filteredAtivos=filtered.filter(function(e){return e.status!=="concluido";});
+    var filteredConcluidos=filtered.filter(function(e){return e.status==="concluido";});
 
-    var tableOrEmpty=events.length===0
-      ? (window.__fugaRole==="partner"
+    function buildEventRows(list){
+      return list.map(function(e){
+        var prog=taskProgress(e);
+        var od=e.status!=="cancelado"?overdueTasks(e):[];
+        var lote=loteAtual(e);
+        var fin=financeSummary(e);
+        var tipoLabel=e.tipo==="collab"?('<span class="pill pill-collab">Collab'+(e.parceiro?" · "+esc(e.parceiro):"")+'</span>'):'<span class="pill pill-proprio">Próprio</span>';
+        var finCell=(e.custos&&e.custos.length)||(e.lotes&&e.lotes.some(function(l){return l.vendidos;}))
+          ?'<span class="mono" style="color:'+(fin.atual.saldo<0?"var(--bad)":"var(--good)")+'">'+fmtMoney(fin.atual.saldo)+'</span>'
+          :'<span style="color:var(--text-muted)">—</span>';
+        var mapaAtivo=MAPS.filter(function(mm){return mm.id===e.mapaSelecionado;})[0];
+        return '<tr class="row-clickable" data-action="open-event" data-id="'+e.id+'">'
+          +'<td class="mono">'+fmtDate(e.data)+(e.data?' <button type="button" class="btn btn-ghost btn-sm" style="padding:3px 6px;margin-left:2px" data-action="add-to-gcal-event" data-id="'+e.id+'" title="Adicionar ao Google Calendar">'+ICONS.calendar+"</button>":"")+'</td>'
+          +'<td><div class="event-name">'+esc(e.nome||"Sem nome")+'</div><div class="event-sub">'+esc([(e.local||e.cidade||""),(mapaAtivo?mapaAtivo.nome.split(" — ")[0]:"")].filter(Boolean).join(" · "))+'</div></td>'
+          +'<td>'+tipoLabel+'</td>'
+          +'<td><span class="pill pill-'+e.status+'">'+statusLabel(STATUS_EVENTO,e.status)+'</span></td>'
+          +'<td><div class="progress-cell"><div class="progress-track"><div class="progress-fill" style="width:'+prog.pct+'%"></div></div><span class="progress-frac">'+prog.done+"/"+prog.total+'</span></div></td>'
+          +'<td class="mono">'+(lote?esc(lote.nome)+' · '+fmtMoney(lote.preco):"—")+'</td>'
+          +'<td>'+finCell+'</td>'
+          +'<td>'+(od.length?'<span class="alert-flag">'+ICONS.alert+od.length+" atrasada"+(od.length>1?"s":"")+'</span>':'<span style="color:var(--text-muted)">—</span>')+'</td>'
+          +'</tr>';
+      }).join("");
+    }
+
+    var tableHead='<thead><tr><th>Data</th><th>Evento</th><th>Tipo</th><th>Status</th><th>Tarefas</th><th>Lote atual</th><th>Financeiro</th><th>Alertas</th></tr></thead>';
+
+    var tableOrEmpty;
+    if(events.length===0){
+      tableOrEmpty=window.__fugaRole==="partner"
         ? '<div class="empty"><h3>Nenhum evento vinculado</h3><p>Sua conta ainda não tem nenhum evento vinculado. Peça para quem administra o painel liberar o acesso.</p></div>'
         : '<div class="empty"><h3>Nenhum evento cadastrado</h3><p>Cadastre o primeiro evento para começar a acompanhar passagens, hotel, som, riders, transfers e ingressos em um só lugar.</p>'
           +(readOnly?"":'<button class="btn btn-primary" data-action="new-event">'+ICONS.plus+"Novo evento</button>")
-          +'</div>')
-      : (filtered.length===0
-        ? '<div class="empty"><h3>Nada encontrado</h3><p>Ajuste a busca ou os filtros para ver outros eventos.</p></div>'
-        : '<div class="table-wrap"><table><thead><tr>'
-          +"<th>Data</th><th>Evento</th><th>Tipo</th><th>Status</th><th>Tarefas</th><th>Lote atual</th><th>Financeiro</th><th>Alertas</th>"
-          +"</tr></thead><tbody>"+rows+"</tbody></table></div>");
+          +'</div>';
+    }else if(filteredAtivos.length===0&&filteredConcluidos.length===0){
+      tableOrEmpty='<div class="empty"><h3>Nada encontrado</h3><p>Ajuste a busca ou os filtros para ver outros eventos.</p></div>';
+    }else if(filteredAtivos.length===0){
+      tableOrEmpty='<div class="empty"><h3>Nenhum evento em andamento</h3><p>Os eventos concluídos que combinam com a busca estão na lista abaixo.</p></div>';
+    }else{
+      tableOrEmpty='<div class="table-wrap"><table>'+tableHead+"<tbody>"+buildEventRows(filteredAtivos)+"</tbody></table></div>";
+    }
+
+    var concluidosSection="";
+    if(filteredConcluidos.length){
+      var concluidosOpen=(typeof ui.eventosConcluidosAbertos==="boolean")?ui.eventosConcluidosAbertos:(filteredAtivos.length===0);
+      concluidosSection='<div class="section" id="sec-eventos-concluidos">'
+        +'<div class="section-head"><div class="section-head-left">'
+        +'<button type="button" class="detail-collapse-btn" data-action="toggle-concluidos" aria-expanded="'+(concluidosOpen?"true":"false")+'" title="'+(concluidosOpen?"Minimizar":"Expandir")+'"><span class="avisos-chevron'+(concluidosOpen?" open":"")+'">'+ICONS.chevron+'</span></button>'
+        +'<h2>Eventos concluídos</h2></div><span class="hint">'+filteredConcluidos.length+" evento"+(filteredConcluidos.length===1?"":"s")+'</span></div>'
+        +(concluidosOpen?'<div class="table-wrap"><table>'+tableHead+"<tbody>"+buildEventRows(filteredConcluidos)+"</tbody></table></div>":"")
+        +'</div>';
+    }
 
     return ""
       +(readOnly?'<div class="banner">'+ICONS.alert+"Suas alterações NÃO estão sendo salvas nesta janela — peça a quem compartilhou o link para conferir sua permissão de edição.</div>":"")
@@ -917,7 +941,8 @@ function App(){
       +'<span class="spacer"></span>'
       +'<span class="count-pill">'+filtered.length+" de "+events.length+' eventos</span>'
       +"</div>"
-      +tableOrEmpty;
+      +tableOrEmpty
+      +concluidosSection;
   }
 
   function statusLabel(list,val){
@@ -1412,6 +1437,10 @@ function App(){
       var gkey=el.dataset.key;
       ui.avisosColapsados=ui.avisosColapsados||{};
       ui.avisosColapsados[gkey]=!ui.avisosColapsados[gkey];
+      saveUi();render();
+    }else if(action==="toggle-concluidos"){
+      var wasOpenC=el.getAttribute("aria-expanded")==="true";
+      ui.eventosConcluidosAbertos=!wasOpenC;
       saveUi();render();
     }else if(action==="toggle-section"){
       var secEvId=el.dataset.event,secKey=el.dataset.section;

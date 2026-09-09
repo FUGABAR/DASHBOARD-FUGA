@@ -274,6 +274,8 @@ tbody tr.row-clickable:hover{background:var(--surface-2)}
   padding:2px 6px;border-radius:6px;min-width:220px;
 }
 .title-input:hover,.title-input:focus{border-color:var(--border);background:var(--surface)}
+.detail-meta-inline{display:flex;align-items:center;gap:6px;width:100%;font-size:13px;font-weight:600;color:var(--text-muted)}
+.detail-meta-inline .dot-sep{opacity:.5}
 .field-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
 .field{display:flex;flex-direction:column;gap:4px}
 .field label{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted)}
@@ -914,8 +916,15 @@ function App(){
   }
 
   /* ---------- colapso de seções, por evento (mantém cabeçalho sempre visível) ---------- */
+  // Por padrão só o Checklist vem aberto; as demais seções começam fechadas
+  // até a pessoa clicar na setinha. Uma vez que ela mexe numa seção, o estado
+  // explícito (aberta/fechada) fica salvo em ui.secAbertas e vale para as
+  // próximas renderizações, independente do padrão.
   function secOpen(evId,key){
-    return !(ui.secColapsadas&&ui.secColapsadas[evId]&&ui.secColapsadas[evId][key]);
+    var porEvento=ui.secAbertas&&ui.secAbertas[evId];
+    var estado=porEvento?porEvento[key]:undefined;
+    if(typeof estado==="boolean")return estado;
+    return key==="checklist";
   }
   function secHead(evId,key,titulo,hint){
     var open=secOpen(evId,key);
@@ -932,17 +941,9 @@ function App(){
     var dis=readOnly?" disabled":"";
 
     var fieldGrid='<div class="field-grid">'
-      +'<div class="field"><label>Data do evento</label><input type="date" value="'+esc(ev.data||"")+'" data-entity="event" data-id="'+ev.id+'" data-field="data"'+dis+'></div>'
-      +'<div class="field"><label>Local</label><select data-entity="event" data-id="'+ev.id+'" data-field="local"'+dis+'><option value="">Selecione…</option>'+LOCAIS.map(function(loc){return '<option value="'+loc+'"'+((ev.local||ev.cidade)===loc?" selected":"")+'>'+loc+"</option>";}).join("")+'</select></div>'
-      +'<div class="field"><label>Tipo</label><select data-entity="event" data-id="'+ev.id+'" data-field="tipo"'+dis+'><option value="collab"'+(ev.tipo==="collab"?" selected":"")+'>Collab</option><option value="proprio"'+(ev.tipo==="proprio"?" selected":"")+'>Próprio</option></select></div>'
       +'<div class="field"><label>Status</label><select data-entity="event" data-id="'+ev.id+'" data-field="status"'+dis+'>'+STATUS_EVENTO.map(function(s){return '<option value="'+s[0]+'"'+(ev.status===s[0]?" selected":"")+'>'+s[1]+"</option>";}).join("")+'</select></div>'
       +'<div class="field"><label>Estimativa de público</label><input type="number" step="1" min="0" placeholder="0" value="'+(ev.estimativaPublico==null?"":ev.estimativaPublico)+'" data-entity="event" data-id="'+ev.id+'" data-field="estimativaPublico"'+dis+'></div>'
-      +(ev.tipo==="collab"?(
-        '<div class="field span2"><label>Parceiro</label><input type="text" value="'+esc(ev.parceiro||"")+'" placeholder="Nome do parceiro / casa parceira" data-entity="event" data-id="'+ev.id+'" data-field="parceiro"'+dis+'></div>'
-        +'<div class="field"><label>% da porta p/ parceiro</label><input type="number" step="1" min="0" max="100" style="min-width:100px" value="'+(ev.percParceiroPorta==null?"":ev.percParceiroPorta)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="percParceiroPorta"'+dis+'></div>'
-        +'<div class="field"><label>% da copa p/ parceiro</label><input type="number" step="1" min="0" max="100" style="min-width:100px" value="'+(ev.percParceiroCopa==null?"":ev.percParceiroCopa)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="percParceiroCopa"'+dis+'></div>'
-      ):"")
-      +'<div class="field span4"><label>Notas gerais</label><textarea data-entity="event" data-id="'+ev.id+'" data-field="notas" placeholder="Observações gerais do evento…"'+dis+'>'+esc(ev.notas||"")+"</textarea></div>"
+      +'<div class="field span2"><label>Notas gerais</label><textarea data-entity="event" data-id="'+ev.id+'" data-field="notas" placeholder="Observações gerais do evento…"'+dis+'>'+esc(ev.notas||"")+"</textarea></div>"
       +"</div>";
 
     var mapaAtualId=ev.mapaSelecionado||MAPS[0].id;
@@ -1020,9 +1021,8 @@ function App(){
     }).join("");
 
     var detailBody=""
-      +'<nav class="quicknav"><a href="#sec-geral">Visão geral</a><a href="#sec-mapa">Mapa</a><a href="#sec-checklist">Checklist</a><a href="#sec-ingressos">Ingressos</a><a href="#sec-custos">Custos</a><a href="#sec-patrocinio">Patrocínio</a><a href="#sec-adiantamento">Adiantamento</a><a href="#sec-financeiro">Financeiro</a></nav>'
+      +'<nav class="quicknav"><a href="#sec-geral">Visão geral</a><a href="#sec-checklist">Checklist</a><a href="#sec-custos">Custos</a><a href="#sec-ingressos">Ingressos</a><a href="#sec-patrocinio">Patrocínio</a><a href="#sec-adiantamento">Adiantamento</a><a href="#sec-financeiro">Financeiro</a><a href="#sec-mapa">Mapa</a></nav>'
       +'<div id="sec-geral">'+fieldGrid+"</div>"
-      +mapaSection
       +'<div class="section" id="sec-checklist">'+secHead(ev.id,"checklist","Checklist do evento",prog.done+" de "+prog.total+" tarefas concluídas")
       +(secOpen(ev.id,"checklist")?(
         '<div class="progress-summary"><div class="progress-track"><div class="progress-fill" style="width:'+prog.pct+'%"></div></div></div>'
@@ -1040,19 +1040,6 @@ function App(){
           +"</div>")
       ):"")
       +"</div>"
-      +'<div class="section" id="sec-ingressos">'+secHead(ev.id,"ingressos","Lotes de ingresso","Tipo, valor e vendidos por lote")
-      +(secOpen(ev.id,"ingressos")?(
-        '<div class="table-wrap"><table><thead><tr><th>Tipo de ingresso</th><th>Valor (R$)</th><th>Vendidos</th><th>Status</th><th></th></tr></thead><tbody>'
-        +(loteRows||'<tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:20px">Nenhum lote cadastrado ainda</td></tr>')
-        +"</tbody></table>"
-        +(readOnly?"":'<div class="add-row">'
-          +'<div class="field grow"><label>Tipo de ingresso</label><select id="newLoteNome">'+tipoIngressoOptionsHtml("")+"</select></div>"
-          +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newLotePreco" placeholder="0,00"></span></div>'
-          +'<div class="field"><label>Vendidos</label><input type="number" id="newLoteVendidos" placeholder="0"></div>'
-          +'<button class="btn btn-ghost btn-sm" data-action="add-lote">'+ICONS.plus+"Adicionar lote</button>"
-          +"</div>")
-      ):"")
-      +"</div>"
       +'<div class="section" id="sec-custos">'+secHead(ev.id,"custos","Custos do evento","Bandas, DJs, produção, estrutura, marketing…")
       +(secOpen(ev.id,"custos")?(
         '<div class="table-wrap"><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Valor (R$)</th><th></th></tr></thead><tbody>'
@@ -1063,6 +1050,19 @@ function App(){
           +'<div class="field"><label>Categoria</label><select id="newCustoCategoria">'+CATEGORIAS_CUSTO.map(function(c){return "<option>"+c+"</option>";}).join("")+"</select></div>"
           +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newCustoValor" placeholder="0,00"></span></div>'
           +'<button class="btn btn-ghost btn-sm" data-action="add-custo">'+ICONS.plus+"Adicionar custo</button>"
+          +"</div>")
+      ):"")
+      +"</div>"
+      +'<div class="section" id="sec-ingressos">'+secHead(ev.id,"ingressos","Lotes de ingresso","Tipo, valor e vendidos por lote")
+      +(secOpen(ev.id,"ingressos")?(
+        '<div class="table-wrap"><table><thead><tr><th>Tipo de ingresso</th><th>Valor (R$)</th><th>Vendidos</th><th>Status</th><th></th></tr></thead><tbody>'
+        +(loteRows||'<tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:20px">Nenhum lote cadastrado ainda</td></tr>')
+        +"</tbody></table>"
+        +(readOnly?"":'<div class="add-row">'
+          +'<div class="field grow"><label>Tipo de ingresso</label><select id="newLoteNome">'+tipoIngressoOptionsHtml("")+"</select></div>"
+          +'<div class="field"><label>Valor (R$)</label><span class="money-field"><span class="money-prefix">R$</span><input type="number" step="5" id="newLotePreco" placeholder="0,00"></span></div>'
+          +'<div class="field"><label>Vendidos</label><input type="number" id="newLoteVendidos" placeholder="0"></div>'
+          +'<button class="btn btn-ghost btn-sm" data-action="add-lote">'+ICONS.plus+"Adicionar lote</button>"
           +"</div>")
       ):"")
       +"</div>"
@@ -1091,7 +1091,8 @@ function App(){
           +"</div>")
       ):"")
       +"</div>"
-      +renderFinanceiro(ev);
+      +renderFinanceiro(ev)
+      +mapaSection;
 
     return ""
       +(readOnly?'<div class="banner">'+ICONS.alert+"Suas alterações NÃO estão sendo salvas nesta janela — peça a quem compartilhou o link para conferir sua permissão de edição.</div>":"")
@@ -1099,7 +1100,8 @@ function App(){
       +'<div class="detail-head"><div class="detail-title-row">'
       +'<input class="title-input" value="'+esc(ev.nome||"")+'" placeholder="Nome do evento" data-entity="event" data-id="'+ev.id+'" data-field="nome"'+dis+'>'
       +'<span class="pill pill-'+ev.status+'">'+statusLabel(STATUS_EVENTO,ev.status)+'</span>'
-      +(ev.tipo==="collab"?'<span class="pill pill-collab">Collab'+(ev.parceiro?" · "+esc(ev.parceiro):"")+'</span>':'<span class="pill pill-proprio">Próprio</span>')
+      +(ev.tipo==="collab"?'<span class="pill pill-collab">Collab'+(ev.parceiro?" · "+esc(ev.parceiro):"")+(ev.percParceiroPorta==null&&ev.percParceiroCopa==null?"":" · "+(ev.percParceiroPorta==null?"—":ev.percParceiroPorta+"%")+" porta / "+(ev.percParceiroCopa==null?"—":ev.percParceiroCopa+"%")+" copa")+'</span>':'<span class="pill pill-proprio">Próprio</span>')
+      +'<div class="detail-meta-inline">'+ICONS.calendar+'<span>'+fmtDate(ev.data)+'</span><span class="dot-sep">·</span><span>'+esc(ev.local||ev.cidade||"Local não definido")+'</span></div>'
       +"</div>"
       +(readOnly||window.__fugaRole==="partner"?"":'<button class="btn btn-danger" data-action="delete-event" data-id="'+ev.id+'">'+ICONS.trash+"Excluir evento</button>")
       +"</div>"
@@ -1165,10 +1167,6 @@ function App(){
         +'<div class="field"><label>Quebra de comparecimento (%)</label><input type="number" step="1" style="min-width:90px" value="'+(ev.quebraPct==null?10:ev.quebraPct)+'" data-entity="event" data-id="'+ev.id+'" data-field="quebraPct"'+dis+'></div>'
         +'<div class="field"><label>Cortesias (pessoas)</label><input type="number" step="1" min="0" style="min-width:90px" placeholder="0" value="'+(ev.cortesiaPessoas==null?"":ev.cortesiaPessoas)+'" data-entity="event" data-id="'+ev.id+'" data-field="cortesiaPessoas"'+dis+'></div>'
         +'<div class="field"><label>Vendas extras esperadas no dia</label><input type="number" step="1" style="min-width:110px" value="'+(ev.vendasDiaEsperadas==null?"":ev.vendasDiaEsperadas)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="vendasDiaEsperadas"'+dis+'></div>'
-        +(f.isCollab?(
-          '<div class="field"><label>% da porta p/ parceiro</label><input type="number" step="1" min="0" max="100" style="min-width:100px" value="'+(ev.percParceiroPorta==null?"":ev.percParceiroPorta)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="percParceiroPorta"'+dis+'></div>'
-          +'<div class="field"><label>% da copa p/ parceiro</label><input type="number" step="1" min="0" max="100" style="min-width:100px" value="'+(ev.percParceiroCopa==null?"":ev.percParceiroCopa)+'" placeholder="0" data-entity="event" data-id="'+ev.id+'" data-field="percParceiroCopa"'+dis+'></div>'
-        ):"")
         +'</div>'
         +(f.totalAdiantamento>0?('<div class="fin-callout" style="background:transparent;border:1px solid var(--border);margin-bottom:16px">'+ICONS.alert
           +'<span>Adiantamento (informativo, não entra em nenhum resultado abaixo): '+fmtMoney(f.totalAdiantamento)
@@ -1341,9 +1339,9 @@ function App(){
       saveUi();render();
     }else if(action==="toggle-section"){
       var secEvId=el.dataset.event,secKey=el.dataset.section;
-      ui.secColapsadas=ui.secColapsadas||{};
-      ui.secColapsadas[secEvId]=ui.secColapsadas[secEvId]||{};
-      ui.secColapsadas[secEvId][secKey]=!ui.secColapsadas[secEvId][secKey];
+      ui.secAbertas=ui.secAbertas||{};
+      ui.secAbertas[secEvId]=ui.secAbertas[secEvId]||{};
+      ui.secAbertas[secEvId][secKey]=!secOpen(secEvId,secKey);
       saveUi();render();
     }else if(action==="open-event"){
       ui.view="detail";ui.selectedEventId=el.dataset.id;saveUi();render();

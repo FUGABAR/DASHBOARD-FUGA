@@ -274,7 +274,7 @@ tbody tr.row-clickable:hover{background:var(--surface-2)}
   padding:2px 6px;border-radius:6px;min-width:220px;
 }
 .title-input:hover,.title-input:focus{border-color:var(--border);background:var(--surface)}
-.detail-meta-inline{display:flex;align-items:center;gap:6px;width:100%;font-size:13px;font-weight:600;color:var(--text-muted)}
+.detail-meta-inline{display:flex;align-items:center;gap:6px;width:100%;flex-wrap:wrap;font-size:13px;font-weight:600;color:var(--text-muted)}
 .detail-meta-inline .dot-sep{opacity:.5}
 .field-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
 .field{display:flex;flex-direction:column;gap:4px}
@@ -629,6 +629,23 @@ function App(){
     var details=encodeURIComponent(detailLines.join("\n"));
     return "https://calendar.google.com/calendar/render?action=TEMPLATE&text="+text+"&dates="+ymd(start)+"/"+ymd(end)+"&details="+details;
   }
+  function gcalEventUrl(ev){
+    if(!ev.data)return "";
+    var start=new Date(ev.data+"T00:00:00");
+    var end=new Date(start.getTime());
+    end.setDate(end.getDate()+1);
+    function ymd(d){return d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0");}
+    var detailLines=[];
+    detailLines.push("Tipo: "+(ev.tipo==="collab"?"Collab"+(ev.parceiro?" · "+ev.parceiro:""):"Próprio"));
+    detailLines.push("Painel Fuga");
+    var text=encodeURIComponent(ev.nome||"Evento");
+    var details=encodeURIComponent(detailLines.join("\n"));
+    var loc=encodeURIComponent(ev.local||ev.cidade||"");
+    return "https://calendar.google.com/calendar/render?action=TEMPLATE&text="+text+"&dates="+ymd(start)+"/"+ymd(end)+"&details="+details+(loc?"&location="+loc:"");
+  }
+  function normalizeNome(v){
+    return (v||"").trim().replace(/\s+/g," ").toUpperCase();
+  }
 
   function toast(msg){
     var el=document.getElementById("toast");
@@ -639,8 +656,50 @@ function App(){
     toastTimer=setTimeout(function(){el.classList.remove("show");},3200);
   }
 
+  // ---- quem está editando agora (para saber depois quem alterou o quê) ----
+  function whoIsEditing(){
+    if(window.__fugaRole==="partner"){
+      return {role:"partner",label:(window.__fugaProfile&&window.__fugaProfile.email)||"Parceiro"};
+    }
+    return {role:"admin",label:"Fuga"};
+  }
+  function stripAudit(ev){
+    var c={};
+    for(var k in ev)if(k!=="ultimaAlteracaoPor"&&k!=="ultimaAlteracaoLabel"&&k!=="ultimaAlteracaoEm")c[k]=ev[k];
+    return c;
+  }
+  // Compara cada evento do novo estado com o antigo e, se algo realmente mudou,
+  // grava quem fez a alteração e quando — assim dá pra saber, olhando o evento,
+  // se a última mudança foi da Fuga ou do parceiro.
+  function stampAlteracoes(newState,oldState){
+    var quem=whoIsEditing();
+    var oldMap={};
+    (oldState&&oldState.events||[]).forEach(function(e){oldMap[e.id]=e;});
+    (newState.events||[]).forEach(function(e){
+      var old=oldMap[e.id];
+      var changed=!old||JSON.stringify(stripAudit(e))!==JSON.stringify(stripAudit(old));
+      if(changed){
+        e.ultimaAlteracaoPor=quem.role;
+        e.ultimaAlteracaoLabel=quem.label;
+        e.ultimaAlteracaoEm=new Date().toISOString();
+      }
+    });
+  }
+  function fmtDateTime(iso){
+    if(!iso)return "";
+    var d=new Date(iso);
+    if(isNaN(d.getTime()))return "";
+    return d.toLocaleDateString("pt-BR")+" às "+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  }
+  function auditLabel(ev){
+    if(!ev.ultimaAlteracaoEm)return "";
+    var quem=ev.ultimaAlteracaoPor==="partner"?("Parceiro"+(ev.ultimaAlteracaoLabel&&ev.ultimaAlteracaoLabel!=="Parceiro"?" ("+ev.ultimaAlteracaoLabel+")":"")):"Fuga";
+    return "Última alteração: "+quem+" · "+fmtDateTime(ev.ultimaAlteracaoEm);
+  }
+
   function persist(newState,opts){
     var oldState=state;
+    stampAlteracoes(newState,oldState);
     state=newState;
     render();
     saveUi();
@@ -712,7 +771,7 @@ function App(){
   function groupAlertsByResponsavel(alerts){
     var map={},order=[];
     alerts.forEach(function(a){
-      var nome=(a.task.responsavel||"").trim();
+      var nome=normalizeNome(a.task.responsavel);
       var key=nome||"__sem__";
       if(!map[key]){map[key]={key:key,nome:nome||"Sem responsável",alerts:[]};order.push(key);}
       map[key].alerts.push(a);
@@ -816,7 +875,7 @@ function App(){
         :'<span style="color:var(--text-muted)">—</span>';
       var mapaAtivo=MAPS.filter(function(mm){return mm.id===e.mapaSelecionado;})[0];
       return '<tr class="row-clickable" data-action="open-event" data-id="'+e.id+'">'
-        +'<td class="mono">'+fmtDate(e.data)+'</td>'
+        +'<td class="mono">'+fmtDate(e.data)+(e.data?' <button type="button" class="btn btn-ghost btn-sm" style="padding:3px 6px;margin-left:2px" data-action="add-to-gcal-event" data-id="'+e.id+'" title="Adicionar ao Google Calendar">'+ICONS.calendar+"</button>":"")+'</td>'
         +'<td><div class="event-name">'+esc(e.nome||"Sem nome")+'</div><div class="event-sub">'+esc([(e.local||e.cidade||""),(mapaAtivo?mapaAtivo.nome.split(" — ")[0]:"")].filter(Boolean).join(" · "))+'</div></td>'
         +'<td>'+tipoLabel+'</td>'
         +'<td><span class="pill pill-'+e.status+'">'+statusLabel(STATUS_EVENTO,e.status)+'</span></td>'
@@ -916,15 +975,32 @@ function App(){
   }
 
   /* ---------- colapso de seções, por evento (mantém cabeçalho sempre visível) ---------- */
-  // Por padrão só o Checklist vem aberto; as demais seções começam fechadas
-  // até a pessoa clicar na setinha. Uma vez que ela mexe numa seção, o estado
-  // explícito (aberta/fechada) fica salvo em ui.secAbertas e vale para as
-  // próximas renderizações, independente do padrão.
+  // Por padrão, uma seção só vem aberta se já tiver algum preenchimento —
+  // assim que a seção ganha algum dado, ela passa a aparecer sozinha. Se a
+  // pessoa mexer na setinha manualmente, essa escolha (aberta/fechada) fica
+  // salva em ui.secAbertas e passa a valer, independente de ter dado ou não.
+  function secTemDados(ev,key){
+    if(!ev)return false;
+    switch(key){
+      case "checklist":return (ev.tasks||[]).length>0;
+      case "custos":return (ev.custos||[]).length>0;
+      case "ingressos":return (ev.lotes||[]).length>0;
+      case "patrocinio":return (ev.patrocinios||[]).length>0;
+      case "adiantamento":return (ev.adiantamentos||[]).length>0;
+      case "financeiro":return !!(
+        ev.gastoMedioBar!=null||ev.cortesiaPessoas!=null||ev.vendasDiaEsperadas!=null
+        ||(ev.custos&&ev.custos.length)
+        ||(ev.lotes&&ev.lotes.some(function(l){return l.vendidos;}))
+      );
+      case "mapa":return !!ev.mapaSelecionado;
+      default:return false;
+    }
+  }
   function secOpen(evId,key){
     var porEvento=ui.secAbertas&&ui.secAbertas[evId];
     var estado=porEvento?porEvento[key]:undefined;
     if(typeof estado==="boolean")return estado;
-    return key==="checklist";
+    return secTemDados(findEvent(state,evId),key);
   }
   function secHead(evId,key,titulo,hint){
     var open=secOpen(evId,key);
@@ -1101,7 +1177,7 @@ function App(){
       +'<input class="title-input" value="'+esc(ev.nome||"")+'" placeholder="Nome do evento" data-entity="event" data-id="'+ev.id+'" data-field="nome"'+dis+'>'
       +'<span class="pill pill-'+ev.status+'">'+statusLabel(STATUS_EVENTO,ev.status)+'</span>'
       +(ev.tipo==="collab"?'<span class="pill pill-collab">Collab'+(ev.parceiro?" · "+esc(ev.parceiro):"")+(ev.percParceiroPorta==null&&ev.percParceiroCopa==null?"":" · "+(ev.percParceiroPorta==null?"—":ev.percParceiroPorta+"%")+" porta / "+(ev.percParceiroCopa==null?"—":ev.percParceiroCopa+"%")+" copa")+'</span>':'<span class="pill pill-proprio">Próprio</span>')
-      +'<div class="detail-meta-inline">'+ICONS.calendar+'<span>'+fmtDate(ev.data)+'</span><span class="dot-sep">·</span><span>'+esc(ev.local||ev.cidade||"Local não definido")+'</span></div>'
+      +'<div class="detail-meta-inline">'+ICONS.calendar+'<span>'+fmtDate(ev.data)+'</span><span class="dot-sep">·</span><span>'+esc(ev.local||ev.cidade||"Local não definido")+'</span>'+(ev.ultimaAlteracaoEm?'<span class="dot-sep">·</span><span>'+esc(auditLabel(ev))+'</span>':"")+'</div>'
       +"</div>"
       +(readOnly||window.__fugaRole==="partner"?"":'<button class="btn btn-danger" data-action="delete-event" data-id="'+ev.id+'">'+ICONS.trash+"Excluir evento</button>")
       +"</div>"
@@ -1460,6 +1536,11 @@ function App(){
         if(!tGc)return;
         var gcalUrl=gcalTaskUrl(evGc,tGc);
         if(gcalUrl)window.open(gcalUrl,"_blank","noopener");
+      }else if(action==="add-to-gcal-event"){
+        var evGcE=findEvent(state,el.dataset.id);
+        if(!evGcE)return;
+        var gcalUrlE=gcalEventUrl(evGcE);
+        if(gcalUrlE)window.open(gcalUrlE,"_blank","noopener");
       }else if(action==="remove-task"){
       var ns3=deepClone(state),ev3=findEvent(ns3,ui.selectedEventId);
       ev3.tasks=ev3.tasks.filter(function(t){return t.id!==el.dataset.id;});
@@ -1475,7 +1556,7 @@ function App(){
       var valorEl=document.getElementById("newTaskValor");
       var obsEl=document.getElementById("newTaskObs");
       var ns4=deepClone(state),ev4=findEvent(ns4,ui.selectedEventId);
-      ev4.tasks.push({id:uid(),categoria:categoria,titulo:titulo,lado:lado,status:"pendente",responsavel:(respEl&&respEl.value||"").trim(),prazo:(prazoEl&&prazoEl.value)||"",valor:(valorEl&&valorEl.value!=="")?parseFloat(valorEl.value):null,obs:(obsEl&&obsEl.value||"").trim(),criadoPor:window.__fugaRole==="partner"?"partner":"admin"});
+      ev4.tasks.push({id:uid(),categoria:categoria,titulo:titulo,lado:lado,status:"pendente",responsavel:normalizeNome(respEl&&respEl.value),prazo:(prazoEl&&prazoEl.value)||"",valor:(valorEl&&valorEl.value!=="")?parseFloat(valorEl.value):null,obs:(obsEl&&obsEl.value||"").trim(),criadoPor:window.__fugaRole==="partner"?"partner":"admin"});
       persist(ns4);
     }else if(action==="remove-lote"){
       var ns5=deepClone(state),ev5=findEvent(ns5,ui.selectedEventId);
@@ -1558,6 +1639,7 @@ function App(){
     if(!entity)return;
     var id=el.dataset.id,field=el.dataset.field;
     var value=el.type==="number"?(el.value===""?null:parseFloat(el.value)):el.value;
+    if(field==="responsavel")value=normalizeNome(value);
     var ns=deepClone(state);
     if(entity==="event"){
       var ev=findEvent(ns,id);if(!ev)return;
